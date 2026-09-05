@@ -113,7 +113,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               textInputAction: TextInputAction.done,
                               errorText: _emailError,
                               onChanged: (_) {
-                                if (_attempted) setState(() => _serverError = null);
+                                if (_attempted)
+                                  setState(() => _serverError = null);
                               },
                               onSubmitted: (_) => _send(),
                             ),
@@ -169,14 +170,17 @@ class CheckEmailScreen extends StatelessWidget {
       isPasswordRecovery: isPasswordRecovery,
     );
     if (!context.mounted) return;
-    final succeeded = result.status == AuthActionStatus.passwordResetSent ||
-        result.status == AuthActionStatus.emailConfirmationRequired;
+    final succeeded =
+        result.status == AuthActionStatus.passwordResetSent ||
+        result.status == AuthActionStatus.emailVerificationRequired;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            succeeded ? 'A new verification code was sent.' : result.message ?? 'Unable to resend email.',
+            succeeded
+                ? 'A new verification code was sent.'
+                : result.message ?? 'Unable to resend email.',
           ),
         ),
       );
@@ -336,13 +340,18 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
       isPasswordRecovery: widget.isPasswordRecovery,
     );
     if (!mounted) return;
-    final succeeded = result.status == AuthActionStatus.passwordResetSent ||
-        result.status == AuthActionStatus.emailConfirmationRequired;
+    final succeeded =
+        result.status == AuthActionStatus.passwordResetSent ||
+        result.status == AuthActionStatus.emailVerificationRequired;
     setState(() => _error = succeeded ? null : result.message);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(succeeded ? 'A new code was sent.' : 'Unable to resend code.')),
+        SnackBar(
+          content: Text(
+            succeeded ? 'A new code was sent.' : 'Unable to resend code.',
+          ),
+        ),
       );
   }
 
@@ -387,7 +396,9 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
                   ),
                   TextButton(
                     onPressed: () => context.go(
-                      widget.isPasswordRecovery ? '/forgot-password' : '/register',
+                      widget.isPasswordRecovery
+                          ? '/forgot-password'
+                          : '/register',
                     ),
                     style: TextButton.styleFrom(
                       alignment: Alignment.centerLeft,
@@ -411,7 +422,11 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
                     const SizedBox(height: 30),
                     Row(
                       children: [
-                        const Icon(Icons.error_outline, size: 15, color: AppColors.danger),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 15,
+                          color: AppColors.danger,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -470,7 +485,8 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
         ],
         onChanged: (value) {
           setState(() => _error = null);
-          if (value.isNotEmpty && index < 5) _focusNodes[index + 1].requestFocus();
+          if (value.isNotEmpty && index < 5)
+            _focusNodes[index + 1].requestFocus();
           if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
         },
         decoration: InputDecoration(
@@ -522,7 +538,12 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordController.text);
   bool get _hasNumber => RegExp(r'\d').hasMatch(_passwordController.text);
   bool get _matches => _passwordController.text == _confirmController.text;
-  bool get _valid => _hasLength && _hasUppercase && _hasNumber && _matches && _confirmController.text.isNotEmpty;
+  bool get _valid =>
+      _hasLength &&
+      _hasUppercase &&
+      _hasNumber &&
+      _matches &&
+      _confirmController.text.isNotEmpty;
 
   @override
   void dispose() {
@@ -598,7 +619,11 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                   const Text(
                     'Your new password must be different from\nyour previous password.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.labelInk, fontSize: 16, height: 1.5),
+                    style: TextStyle(
+                      color: AppColors.labelInk,
+                      fontSize: 16,
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 26),
                   AuthTextField(
@@ -610,8 +635,13 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                     textInputAction: TextInputAction.next,
                     onChanged: (_) => setState(() => _error = null),
                     suffixIcon: IconButton(
-                      onPressed: () => setState(() => _showPassword = !_showPassword),
-                      icon: Icon(_showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      onPressed: () =>
+                          setState(() => _showPassword = !_showPassword),
+                      icon: Icon(
+                        _showPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -622,12 +652,21 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                     obscureText: !_showConfirm,
                     maxLength: _maxPasswordLength,
                     textInputAction: TextInputAction.done,
-                    errorText: _confirmController.text.isNotEmpty && !_matches ? 'Passwords do not match.' : null,
+                    errorText: _confirmController.text.isNotEmpty && !_matches
+                        ? 'Passwords do not match.'
+                        : null,
                     onChanged: (_) => setState(() => _error = null),
-                    onSubmitted: (_) { if (_valid && !appState.isBusy) _submit(); },
+                    onSubmitted: (_) {
+                      if (_valid && !appState.isBusy) _submit();
+                    },
                     suffixIcon: IconButton(
-                      onPressed: () => setState(() => _showConfirm = !_showConfirm),
-                      icon: Icon(_showConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      onPressed: () =>
+                          setState(() => _showConfirm = !_showConfirm),
+                      icon: Icon(
+                        _showConfirm
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -640,7 +679,14 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Password must contain:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.labelInk)),
+                        const Text(
+                          'Password must contain:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.labelInk,
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         _requirement('At least 8 characters', _hasLength),
                         _requirement('One uppercase letter', _hasUppercase),
@@ -650,7 +696,13 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+                    Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 24),
                   AuthPrimaryButton(
@@ -679,7 +731,10 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
             color: met ? AppColors.yellow : AppColors.inputBorder,
           ),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: AppColors.labelInk, fontSize: 14)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.labelInk, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -737,7 +792,11 @@ class PasswordResetSuccessScreen extends StatelessWidget {
                         const Text(
                           'You can now sign in with your new\npassword.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.labelInk, fontSize: 16, height: 1.5),
+                          style: TextStyle(
+                            color: AppColors.labelInk,
+                            fontSize: 16,
+                            height: 1.5,
+                          ),
                         ),
                         const SizedBox(height: 32),
                         AuthPrimaryButton(

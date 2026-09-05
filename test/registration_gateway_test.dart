@@ -45,9 +45,6 @@ void main() {
         'password': 'Password1!',
       });
       expect(result.message, 'Verification code sent. Check your inbox.');
-<<<<<<< Updated upstream
-      expect(result.confirmationRequired, isTrue);
-=======
       expect(result.otpRequired, isTrue);
     });
 
@@ -182,7 +179,6 @@ void main() {
         'newPassword': 'NewPassword1',
         'confirmPassword': 'NewPassword1',
       });
->>>>>>> Stashed changes
     });
 
     test(
@@ -286,19 +282,19 @@ void main() {
         client: client,
       );
 
-      final login = await gateway.login(
+      final login = await gateway.signIn(
         email: 'person@example.com',
         password: 'Password1!',
       );
-      await gateway.requestPasswordReset('person@example.com');
-      final recovery = await gateway.verifyOtp(
+      await gateway.requestPasswordReset(email: 'person@example.com');
+      final recovery = await gateway.verifyPasswordRecoveryCode(
         email: 'person@example.com',
         code: '123456',
-        isPasswordRecovery: true,
       );
       await gateway.resetPassword(
         accessToken: recovery.accessToken,
         newPassword: 'NewPassword1',
+        confirmPassword: 'NewPassword1',
       );
 
       expect(login.refreshToken, 'refresh-token');
