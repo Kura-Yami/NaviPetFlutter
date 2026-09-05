@@ -5,6 +5,20 @@ class NavigationCoordinate {
   final double longitude;
 }
 
+enum CampusDestinationType {
+  building,
+  room,
+  entrance,
+  parking,
+  dining,
+  service,
+  amenity,
+  transit,
+  housing,
+  landmark,
+  external,
+}
+
 class PlaceSuggestion {
   const PlaceSuggestion({
     required this.mapboxId,
@@ -22,11 +36,32 @@ class NaviDestination {
     required this.name,
     required this.address,
     required this.coordinate,
+    this.id,
+    this.type,
+    this.buildingCode,
+    this.roomNumber,
+    this.floorNumber,
+    this.indoorDestinationId,
+    this.external = false,
+    this.attribution,
+    this.isBuildingAlternative = false,
   });
 
   final String name;
   final String address;
   final NavigationCoordinate coordinate;
+  final String? id;
+  final CampusDestinationType? type;
+  final String? buildingCode;
+  final String? roomNumber;
+  final String? floorNumber;
+  final String? indoorDestinationId;
+  final bool external;
+  final String? attribution;
+  final bool isBuildingAlternative;
+
+  bool get hasIndoorNavigation =>
+      indoorDestinationId?.trim().isNotEmpty == true;
 }
 
 class NavigationStep {
