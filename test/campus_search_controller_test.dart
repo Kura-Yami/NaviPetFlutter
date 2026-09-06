@@ -61,32 +61,26 @@ Future<void> debounceElapsed() =>
     Future<void>.delayed(const Duration(milliseconds: 30));
 
 void main() {
-  test(
-    'debounces valid input and does not query fewer than two characters',
-    () async {
-      final gateway = FakeGateway();
-      final controller = CampusSearchController(
-        gateway: gateway,
-        location: FakeLocationProvider(),
-        debounce: const Duration(milliseconds: 20),
-      );
-      addTearDown(controller.dispose);
+  test('debounces every non-empty query, including one character', () async {
+    final gateway = FakeGateway();
+    final controller = CampusSearchController(
+      gateway: gateway,
+      location: FakeLocationProvider(),
+      debounce: const Duration(milliseconds: 20),
+    );
+    addTearDown(controller.dispose);
 
-      for (final query in ['', 'x', '---x---']) {
-        controller.queryChanged(query);
-        await debounceElapsed();
-      }
-      expect(gateway.queries, isEmpty);
+    controller.queryChanged('');
+    await debounceElapsed();
+    expect(gateway.queries, isEmpty);
 
-      controller.queryChanged('C');
-      controller.queryChanged('CO');
-      expect(controller.status, CampusSearchStatus.typing);
-      await debounceElapsed();
+    controller.queryChanged('C');
+    expect(controller.status, CampusSearchStatus.typing);
+    await debounceElapsed();
 
-      expect(gateway.queries, ['CO']);
-      expect(controller.status, CampusSearchStatus.results);
-    },
-  );
+    expect(gateway.queries, ['C']);
+    expect(controller.status, CampusSearchStatus.results);
+  });
 
   test('shows loading while the active request is unresolved', () async {
     final pending = Completer<List<CampusPlace>>();

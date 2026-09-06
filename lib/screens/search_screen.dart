@@ -219,9 +219,11 @@ class _SearchScreenState extends State<SearchScreen> {
     switch (_searchController.status) {
       case CampusSearchStatus.initial:
       case CampusSearchStatus.typing:
-        return const Center(child: Text('Type at least two characters.'));
+        return const SizedBox.shrink();
       case CampusSearchStatus.loading:
-        return const Center(child: Text('Searching campus…'));
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.yellow),
+        );
       case CampusSearchStatus.noResults:
         return const Center(child: Text('No destinations found.'));
       case CampusSearchStatus.offline:
@@ -237,7 +239,10 @@ class _SearchScreenState extends State<SearchScreen> {
           'Location is unavailable. Turn on Location Services and retry.',
         );
       case CampusSearchStatus.apiError:
-        return _stateMessage('Campus search is unavailable. Please retry.');
+        return _stateMessage(
+          _searchController.message ??
+              'Campus search is unavailable. Please retry.',
+        );
       case CampusSearchStatus.results:
         break;
     }

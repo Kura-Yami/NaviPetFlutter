@@ -9,6 +9,7 @@ import 'package:navipet/data/navigation_models.dart';
 import 'package:navipet/data/search_history_store.dart';
 import 'package:navipet/data/search_location_provider.dart';
 import 'package:navipet/screens/search_screen.dart';
+import 'package:navipet/theme/app_theme.dart';
 import 'package:navipet/widgets/campus_search_result_tile.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -203,12 +204,12 @@ void main() {
       expect(find.text('Find your way,'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), 'C');
-      await tester.pump();
-      expect(find.text('Type at least two characters.'), findsOneWidget);
-
-      await tester.enterText(find.byType(TextField), 'COB');
       await tester.pump(const Duration(milliseconds: 25));
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      final indicator = tester.widget<CircularProgressIndicator>(
+        find.byType(CircularProgressIndicator),
+      );
+      expect(indicator.color, AppColors.yellow);
+      expect(find.text('Type at least two characters.'), findsNothing);
 
       pending.complete([place(CampusDestinationType.building, title: 'COB')]);
       await tester.pump();
@@ -252,10 +253,7 @@ void main() {
         ),
       );
       await search(tester, 'HSCI');
-      expect(
-        find.text('Campus search is unavailable. Please retry.'),
-        findsOneWidget,
-      );
+      expect(find.text('api'), findsOneWidget);
 
       location.result = const SearchLocationResult.permissionRequired();
       await search(tester, 'nearest parking');
@@ -333,5 +331,30 @@ void main() {
     await tester.pump();
     expect(gateway.placeRequests, isEmpty);
     expect(selected?.indoorDestinationId, isNull);
+  });
+
+  testWidgets('shows the verified-navigation error for a selected bad result', (
+    tester,
+  ) async {
+    final gateway = FakeGateway();
+    final malformed = CampusPlace(
+      id: '00000000-0000-4000-8000-000000000012',
+      type: CampusDestinationType.building,
+      title: 'Horn Center',
+      subtitle: 'HC',
+      source: 'csulb',
+    );
+    gateway.onAutocomplete = (_) async => [malformed];
+    gateway.refreshed = malformed;
+    await tester.pumpWidget(harness(gateway));
+
+    await search(tester, 'Horn Center');
+    await tester.tap(find.byType(CampusSearchResultTile));
+    await tester.pump();
+
+    expect(
+      find.text('Verified outdoor navigation is unavailable.'),
+      findsOneWidget,
+    );
   });
 }
