@@ -133,15 +133,27 @@ GoRouter createAppRouter(AppState appState) => GoRouter(
     ),
     GoRoute(
       path: '/navigation/campus-arrival',
-      builder: (context, state) => const CampusArrivalScreen(),
+      builder: (context, state) => CampusArrivalScreen(
+        destination: state.extra is NaviDestination
+            ? state.extra! as NaviDestination
+            : null,
+      ),
     ),
     GoRoute(
       path: '/navigation/localize',
-      builder: (context, state) => const LocalizationScreen(),
+      builder: (context, state) => LocalizationScreen(
+        destination: state.extra is NaviDestination
+            ? state.extra! as NaviDestination
+            : null,
+      ),
     ),
     GoRoute(
       path: '/navigation/indoor',
-      builder: (context, state) => const IndoorNavigationScreen(),
+      builder: (context, state) => IndoorNavigationScreen(
+        destination: state.extra is NaviDestination
+            ? state.extra! as NaviDestination
+            : null,
+      ),
     ),
     GoRoute(
       path: '/navigation/elevator',
@@ -153,7 +165,11 @@ GoRouter createAppRouter(AppState appState) => GoRouter(
     ),
     GoRoute(
       path: '/ar',
-      builder: (context, state) => const LocalizationScreen(),
+      builder: (context, state) => LocalizationScreen(
+        destination: state.extra is NaviDestination
+            ? state.extra! as NaviDestination
+            : null,
+      ),
     ),
   ],
 );

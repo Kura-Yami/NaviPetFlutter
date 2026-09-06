@@ -14,6 +14,7 @@ import '../data/app_state.dart';
 import '../data/mapbox_config.dart';
 import '../data/mapbox_navigation_service.dart';
 import '../data/navigation_models.dart';
+import '../data/outdoor_route_gateway.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/search_bar_field.dart';
@@ -242,9 +243,10 @@ class _MapScreenState extends State<MapScreen> {
           );
 
     try {
-      final route = await _navigationService.getRoute(
+      final route = await loadOutdoorRoute(
+        gateway: _navigationService,
         origin: origin,
-        destination: destination.coordinate,
+        destination: destination,
       );
       await _drawRoute(route, destination);
       if (!mounted) return;
@@ -398,12 +400,13 @@ class _MapScreenState extends State<MapScreen> {
 
     _lastReroute = DateTime.now();
     try {
-      final newRoute = await _navigationService.getRoute(
+      final newRoute = await loadOutdoorRoute(
+        gateway: _navigationService,
         origin: NavigationCoordinate(
           latitude: position.latitude,
           longitude: position.longitude,
         ),
-        destination: destination.coordinate,
+        destination: destination,
       );
       await _drawRoute(newRoute, destination);
       if (!mounted) return;
@@ -494,7 +497,7 @@ class _MapScreenState extends State<MapScreen> {
     _stepCountSubscription = null;
     await _speak('You have arrived at ${destination.name}.');
     if (!mounted) return;
-    await showDialog<void>(
+    final continueIndoors = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
@@ -507,6 +510,15 @@ class _MapScreenState extends State<MapScreen> {
               destination.name,
               textAlign: TextAlign.center,
               style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              destination.isBuildingAlternative
+                  ? 'Navigation ends at the building.'
+                  : destination.hasIndoorNavigation
+                  ? 'Indoor navigation is available.'
+                  : 'Navigation ends outdoors.',
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             _summaryRow(
@@ -523,13 +535,22 @@ class _MapScreenState extends State<MapScreen> {
           ],
         ),
         actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Done'),
           ),
+          if (destination.hasIndoorNavigation)
+            FilledButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.view_in_ar_outlined),
+              label: const Text('Continue indoors'),
+            ),
         ],
       ),
     );
+    if (continueIndoors == true && mounted) {
+      await context.push('/navigation/localize', extra: destination);
+    }
     _arrivalInProgress = false;
   }
 

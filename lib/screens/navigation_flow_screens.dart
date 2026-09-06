@@ -19,7 +19,19 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
   int entrance = 0;
   @override
   Widget build(BuildContext context) {
-    final name = widget.destination?.name ?? 'College of Business';
+    final destination = widget.destination;
+    final name = destination?.name ?? 'College of Business';
+    final metadata = <String>[
+      if (destination?.buildingCode != null)
+        'Building ${destination!.buildingCode}',
+      if (destination?.roomNumber != null) 'Room ${destination!.roomNumber}',
+      if (destination?.floorNumber != null) 'Floor ${destination!.floorNumber}',
+    ];
+    final navigationLabel = destination?.isBuildingAlternative == true
+        ? 'Navigation ends at the building'
+        : destination?.hasIndoorNavigation == true
+        ? 'Indoor navigation available after outdoor arrival'
+        : 'Outdoor navigation only';
     return Scaffold(
       backgroundColor: const Color(0xFFE9ECEC),
       appBar: AppBar(
@@ -56,8 +68,8 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
                     color: _navy,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    '▦ CBA',
+                  child: Text(
+                    '▦ ${destination?.buildingCode ?? 'Campus'}',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -122,9 +134,18 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    'CBA   •   Room 234',
-                    style: TextStyle(color: Color(0xFF555861)),
+                  if (metadata.isNotEmpty)
+                    Text(
+                      metadata.join('   •   '),
+                      style: const TextStyle(color: Color(0xFF555861)),
+                    ),
+                  const SizedBox(height: 5),
+                  Text(
+                    navigationLabel,
+                    style: const TextStyle(
+                      color: Color(0xFF555861),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Container(
@@ -491,115 +512,138 @@ class OffRouteScreen extends StatelessWidget {
 }
 
 class CampusArrivalScreen extends StatelessWidget {
-  const CampusArrivalScreen({super.key});
+  const CampusArrivalScreen({super.key, this.destination});
+
+  final NaviDestination? destination;
+
   @override
-  Widget build(BuildContext context) => _IndoorBackdrop(
-    child: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: IconButton(
-                    onPressed: () => context.go('/map'),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-                const Spacer(),
-                _pill('NaviPet', Colors.white, _navy),
-              ],
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: AppShadows.card,
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final canNavigateIndoors = destination?.hasIndoorNavigation == true;
+    final endingLabel = destination?.isBuildingAlternative == true
+        ? 'Navigation ends at the building'
+        : 'Navigation ends outdoors';
+    return _IndoorBackdrop(
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Row(
                 children: [
-                  Text(
-                    "You've arrived!",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: _navy,
+                  CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: IconButton(
+                      onPressed: () => context.go('/map'),
+                      icon: const Icon(Icons.close),
                     ),
                   ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Great job. Now, let's head inside to find Room 140.",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF62656D),
-                      height: 1.45,
-                    ),
-                  ),
+                  const Spacer(),
+                  _pill('NaviPet', Colors.white, _navy),
                 ],
               ),
-            ),
-            const SizedBox(height: 30),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  const ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: Color(0xFFFFF4C8),
-                      child: Icon(
-                        Icons.check_circle_outline,
-                        color: Color(0xFF8B7000),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: AppShadows.card,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "You've arrived!",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: _navy,
                       ),
                     ),
-                    title: Text(
-                      'Outdoor leg complete',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    SizedBox(height: 5),
+                    Text(
+                      canNavigateIndoors
+                          ? 'Outdoor leg complete. Continue inside to ${destination!.name}.'
+                          : endingLabel,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF62656D),
+                        height: 1.45,
+                      ),
                     ),
-                    subtitle: Text('Room 140 is still inside'),
-                  ),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => context.push('/navigation/localize'),
-                      icon: const Icon(Icons.view_in_ar_outlined),
-                      label: const Text('Continue Indoors (AR)'),
-                      style: _filled(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: Color(0xFFFFF4C8),
+                        child: Icon(
+                          Icons.check_circle_outline,
+                          color: Color(0xFF8B7000),
+                        ),
+                      ),
+                      title: Text(
+                        'Outdoor leg complete',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        canNavigateIndoors
+                            ? '${destination!.name} is still inside'
+                            : endingLabel,
+                      ),
                     ),
-                  ),
-                ],
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    if (canNavigateIndoors)
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => context.push(
+                            '/navigation/localize',
+                            extra: destination,
+                          ),
+                          icon: const Icon(Icons.view_in_ar_outlined),
+                          label: const Text('Continue Indoors (AR)'),
+                          style: _filled(),
+                        ),
+                      )
+                    else
+                      Text(endingLabel),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'ⓘ  Indoor AR positioning requires temporary access to your camera and motion sensors. GPS is inaccurate indoors.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF555861),
-                height: 1.45,
+              const SizedBox(height: 18),
+              const Text(
+                'ⓘ  Indoor AR positioning requires temporary access to your camera and motion sensors. GPS is inaccurate indoors.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF555861),
+                  height: 1.45,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class LocalizationScreen extends StatefulWidget {
-  const LocalizationScreen({super.key});
+  const LocalizationScreen({super.key, this.destination});
+
+  final NaviDestination? destination;
   @override
   State<LocalizationScreen> createState() => _LocalizationScreenState();
 }
@@ -610,7 +654,12 @@ class _LocalizationScreenState extends State<LocalizationScreen> {
     setState(() => progress = (progress + .3).clamp(0, 1));
     if (progress >= .7) {
       Future<void>.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) context.pushReplacement('/navigation/indoor');
+        if (mounted) {
+          context.pushReplacement(
+            '/navigation/indoor',
+            extra: widget.destination,
+          );
+        }
       });
     }
   }
@@ -727,7 +776,10 @@ class _LocalizationScreenState extends State<LocalizationScreen> {
 }
 
 class IndoorNavigationScreen extends StatelessWidget {
-  const IndoorNavigationScreen({super.key});
+  const IndoorNavigationScreen({super.key, this.destination});
+
+  final NaviDestination? destination;
+
   @override
   Widget build(BuildContext context) => _IndoorBackdrop(
     child: SafeArea(
@@ -740,7 +792,7 @@ class IndoorNavigationScreen extends StatelessWidget {
             child: _instruction(
               Icons.turn_left,
               'Continue down this hallway',
-              '80 ft to Room 140',
+              '80 ft to ${destination?.name ?? 'destination'}',
             ),
           ),
           const Positioned(
