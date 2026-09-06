@@ -21,14 +21,13 @@ enum CampusSearchStatus {
 
 class CampusSearchController extends ChangeNotifier {
   CampusSearchController({
-    required CampusSearchGateway gateway,
-    required SearchLocationProvider location,
+    required this.gateway,
+    required this.location,
     this.debounce = const Duration(milliseconds: 275),
-  }) : _gateway = gateway,
-       _location = location;
+  });
 
-  final CampusSearchGateway _gateway;
-  final SearchLocationProvider _location;
+  final CampusSearchGateway gateway;
+  final SearchLocationProvider location;
   final Duration debounce;
 
   CampusSearchStatus _status = CampusSearchStatus.initial;
@@ -78,7 +77,7 @@ class CampusSearchController extends ChangeNotifier {
     final generation = _generation;
     try {
       final selected = suggestion.isLocal
-          ? await _gateway.place(suggestion.id)
+          ? await gateway.place(suggestion.id)
           : suggestion;
       if (!_isCurrent(generation)) return null;
       return selected.toDestination();
@@ -107,7 +106,7 @@ class CampusSearchController extends ChangeNotifier {
       if (GeolocatorSearchLocationProvider.proximityQueries.contains(
         normalized,
       )) {
-        final locationResult = await _location.locationFor(normalized);
+        final locationResult = await location.locationFor(normalized);
         if (!_isCurrent(generation)) return;
         switch (locationResult.status) {
           case SearchLocationStatus.permissionRequired:
@@ -124,7 +123,7 @@ class CampusSearchController extends ChangeNotifier {
         }
       }
 
-      final found = await _gateway.autocomplete(
+      final found = await gateway.autocomplete(
         requestQuery,
         proximity: proximity,
         limit: 10,

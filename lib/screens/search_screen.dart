@@ -101,8 +101,9 @@ class _SearchScreenState extends State<SearchScreen> {
       ..dispose();
     _controller.dispose();
     _focusNode.dispose();
-    if (_ownsGateway && _gateway is HttpCampusSearchGateway) {
-      (_gateway as HttpCampusSearchGateway).dispose();
+    final gateway = _gateway;
+    if (_ownsGateway && gateway is HttpCampusSearchGateway) {
+      gateway.dispose();
     }
     super.dispose();
   }

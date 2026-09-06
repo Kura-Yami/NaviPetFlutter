@@ -113,8 +113,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               textInputAction: TextInputAction.done,
                               errorText: _emailError,
                               onChanged: (_) {
-                                if (_attempted)
+                                if (_attempted) {
                                   setState(() => _serverError = null);
+                                }
                               },
                               onSubmitted: (_) => _send(),
                             ),
@@ -485,9 +486,12 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
         ],
         onChanged: (value) {
           setState(() => _error = null);
-          if (value.isNotEmpty && index < 5)
+          if (value.isNotEmpty && index < 5) {
             _focusNodes[index + 1].requestFocus();
-          if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
+          }
+          if (value.isEmpty && index > 0) {
+            _focusNodes[index - 1].requestFocus();
+          }
         },
         decoration: InputDecoration(
           contentPadding: EdgeInsets.zero,
