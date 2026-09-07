@@ -4,8 +4,9 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import 'navigation_models.dart';
+import 'outdoor_route_gateway.dart';
 
-class MapboxNavigationService {
+class MapboxNavigationService implements OutdoorRouteGateway {
   MapboxNavigationService({required this.accessToken, http.Client? client})
     : _client = client ?? http.Client();
 
@@ -102,6 +103,7 @@ class MapboxNavigationService {
     );
   }
 
+  @override
   Future<NavigationRoute> getRoute({
     required NavigationCoordinate origin,
     required NavigationCoordinate destination,

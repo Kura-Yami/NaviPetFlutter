@@ -5,10 +5,10 @@ import 'package:navipet/data/registration_gateway.dart';
 /// Records every backend call so the tests can assert the exact sequence the
 /// reset flow is allowed to make. Any Supabase traffic would throw instead,
 /// because these AppStates are built without a SupabaseClient.
-class _FakeBackendGateway implements BackendAuthGateway {
+class _FakeBackendGateway implements RegistrationGateway {
   _FakeBackendGateway({this.resetError});
 
-  static const otpTokens = AuthTokens(
+  static const otpTokens = RegistrationVerificationSuccess(
     accessToken: 'recovery-access',
     refreshToken: 'recovery-refresh',
   );
@@ -20,11 +20,11 @@ class _FakeBackendGateway implements BackendAuthGateway {
   String? capturedNewPassword;
 
   @override
-  Future<AuthTokens> login({
+  Future<RegistrationVerificationSuccess> signIn({
     required String email,
     required String password,
   }) async {
-    calls.add('login');
+    calls.add('sign-in');
     return otpTokens;
   }
 
@@ -36,19 +36,30 @@ class _FakeBackendGateway implements BackendAuthGateway {
     required String password,
   }) async {
     calls.add('register');
-    return const RegistrationSuccess(message: 'ok', confirmationRequired: true);
+    return const RegistrationSuccess(message: 'ok', otpRequired: true);
   }
 
   @override
-  Future<void> requestPasswordReset(String email) async {
+  Future<PasswordResetRequestSuccess> requestPasswordReset({
+    required String email,
+  }) async {
     calls.add('forgot-password');
+    return const PasswordResetRequestSuccess(message: 'ok');
   }
 
   @override
-  Future<AuthTokens> verifyOtp({
+  Future<RegistrationVerificationSuccess> verifyRegistrationCode({
     required String email,
     required String code,
-    required bool isPasswordRecovery,
+  }) async {
+    calls.add('verify-otp');
+    return otpTokens;
+  }
+
+  @override
+  Future<RegistrationVerificationSuccess> verifyPasswordRecoveryCode({
+    required String email,
+    required String code,
   }) async {
     calls.add('verify-otp');
     return otpTokens;
@@ -58,6 +69,7 @@ class _FakeBackendGateway implements BackendAuthGateway {
   Future<void> resetPassword({
     required String accessToken,
     required String newPassword,
+    required String confirmPassword,
   }) async {
     calls.add('reset-password');
     resetAccessToken = accessToken;
@@ -127,56 +139,60 @@ void main() {
       expect(gateway.calls, ['verify-otp', 'reset-password']);
     });
 
-    test('an INVALID_ACCESS_TOKEN drops the session so the flow can restart',
-        () async {
-      final gateway = _FakeBackendGateway(
-        resetError: const RegistrationException(
-          message: 'Your password reset session has expired.',
-          statusCode: 401,
-          code: 'INVALID_ACCESS_TOKEN',
-        ),
-      );
-      final state = AppState(registrationGateway: gateway);
-      addTearDown(state.dispose);
+    test(
+      'an INVALID_ACCESS_TOKEN drops the session so the flow can restart',
+      () async {
+        final gateway = _FakeBackendGateway(
+          resetError: const RegistrationException(
+            message: 'Your password reset session has expired.',
+            statusCode: 401,
+            code: 'INVALID_ACCESS_TOKEN',
+          ),
+        );
+        final state = AppState(registrationGateway: gateway);
+        addTearDown(state.dispose);
 
-      await state.verifyEmailCode(
-        email: 'student@example.com',
-        code: '123456',
-        isPasswordRecovery: true,
-      );
-      final result = await state.updatePassword('Password1');
+        await state.verifyEmailCode(
+          email: 'student@example.com',
+          code: '123456',
+          isPasswordRecovery: true,
+        );
+        final result = await state.updatePassword('Password1');
 
-      expect(result.status, AuthActionStatus.failure);
-      expect(result.code, 'INVALID_ACCESS_TOKEN');
-      expect(state.hasPasswordRecoverySession, isFalse);
-    });
+        expect(result.status, AuthActionStatus.failure);
+        expect(result.code, 'INVALID_ACCESS_TOKEN');
+        expect(state.hasPasswordRecoverySession, isFalse);
+      },
+    );
 
-    test('a VALIDATION_ERROR keeps the session so the user can retry',
-        () async {
-      final gateway = _FakeBackendGateway(
-        resetError: const RegistrationException(
-          message: 'Password must be different from your previous password.',
-          statusCode: 422,
-          code: 'VALIDATION_ERROR',
-        ),
-      );
-      final state = AppState(registrationGateway: gateway);
-      addTearDown(state.dispose);
+    test(
+      'a VALIDATION_ERROR keeps the session so the user can retry',
+      () async {
+        final gateway = _FakeBackendGateway(
+          resetError: const RegistrationException(
+            message: 'Password must be different from your previous password.',
+            statusCode: 422,
+            code: 'VALIDATION_ERROR',
+          ),
+        );
+        final state = AppState(registrationGateway: gateway);
+        addTearDown(state.dispose);
 
-      await state.verifyEmailCode(
-        email: 'student@example.com',
-        code: '123456',
-        isPasswordRecovery: true,
-      );
-      final result = await state.updatePassword('Password1');
+        await state.verifyEmailCode(
+          email: 'student@example.com',
+          code: '123456',
+          isPasswordRecovery: true,
+        );
+        final result = await state.updatePassword('Password1');
 
-      expect(result.status, AuthActionStatus.failure);
-      expect(result.code, 'VALIDATION_ERROR');
-      expect(
-        result.message,
-        'Password must be different from your previous password.',
-      );
-      expect(state.hasPasswordRecoverySession, isTrue);
-    });
+        expect(result.status, AuthActionStatus.failure);
+        expect(result.code, 'VALIDATION_ERROR');
+        expect(
+          result.message,
+          'Password must be different from your previous password.',
+        );
+        expect(state.hasPasswordRecoverySession, isTrue);
+      },
+    );
   });
 }
