@@ -61,7 +61,7 @@ Future<void> debounceElapsed() =>
     Future<void>.delayed(const Duration(milliseconds: 30));
 
 void main() {
-  test('debounces every non-empty query, including one character', () async {
+  test('shows loading without querying for a one-character input', () async {
     final gateway = FakeGateway();
     final controller = CampusSearchController(
       gateway: gateway,
@@ -75,11 +75,25 @@ void main() {
     expect(gateway.queries, isEmpty);
 
     controller.queryChanged('C');
-    expect(controller.status, CampusSearchStatus.typing);
+    expect(controller.status, CampusSearchStatus.loading);
     await debounceElapsed();
 
-    expect(gateway.queries, ['C']);
-    expect(controller.status, CampusSearchStatus.results);
+    expect(gateway.queries, isEmpty);
+    expect(controller.status, CampusSearchStatus.loading);
+  });
+
+  test('does not retry a one-character query', () async {
+    final gateway = FakeGateway();
+    final controller = CampusSearchController(
+      gateway: gateway,
+      location: FakeLocationProvider(),
+    );
+    addTearDown(controller.dispose);
+
+    controller.queryChanged('C');
+    await controller.retry();
+
+    expect(gateway.queries, isEmpty);
   });
 
   test('shows loading while the active request is unresolved', () async {

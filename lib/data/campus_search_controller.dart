@@ -56,6 +56,10 @@ class CampusSearchController extends ChangeNotifier {
       _setStatus(CampusSearchStatus.initial);
       return;
     }
+    if (meaningfulLength < 2) {
+      _setStatus(CampusSearchStatus.loading);
+      return;
+    }
     _setStatus(CampusSearchStatus.typing);
     _timer = Timer(
       debounce,
@@ -66,7 +70,7 @@ class CampusSearchController extends ChangeNotifier {
   Future<void> retry() async {
     _timer?.cancel();
     final normalized = _normalize(_query);
-    if (normalized.replaceAll(' ', '').isEmpty) return;
+    if (normalized.replaceAll(' ', '').length < 2) return;
     final generation = ++_generation;
     await _search(_query.trim(), normalized, generation);
   }

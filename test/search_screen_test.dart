@@ -211,6 +211,8 @@ void main() {
       expect(indicator.color, AppColors.yellow);
       expect(find.text('Type at least two characters.'), findsNothing);
 
+      await tester.enterText(find.byType(TextField), 'CO');
+      await tester.pump(const Duration(milliseconds: 25));
       pending.complete([place(CampusDestinationType.building, title: 'COB')]);
       await tester.pump();
       expect(
