@@ -188,7 +188,155 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _openSearch() async {
     final destination = await context.push<NaviDestination>('/search');
     if (!mounted || destination == null) return;
+    final wantsDirections = await _askForDirections(destination);
+    if (!mounted || !wantsDirections) return;
     await _previewRoute(destination);
+  }
+
+  Future<bool> _askForDirections(NaviDestination destination) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        key: const ValueKey('directions-prompt'),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: AppColors.accentSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.directions_walk_rounded,
+                    color: AppColors.amberInk,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Get directions?',
+                        style: TextStyle(
+                          color: AppColors.navy,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        destination.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      if (destination.address.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          destination.address,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.screenBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.my_location, size: 18, color: AppColors.navy),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Preview a walking route from your current location',
+                      style: TextStyle(
+                        color: AppColors.labelInk,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.navy,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: AppColors.inputBorder),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: const Text('Not now'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    key: const ValueKey('preview-directions-button'),
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.navy,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.route_rounded, size: 20),
+                    label: const Text('Preview route'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _previewRoute(NaviDestination destination) async {
@@ -479,11 +627,7 @@ class _MapScreenState extends State<MapScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        icon: const Icon(
-          Icons.check_circle,
-          color: AppColors.green,
-          size: 56,
-        ),
+        icon: const Icon(Icons.check_circle, color: AppColors.green, size: 56),
         title: const Text('You have arrived!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -494,7 +638,11 @@ class _MapScreenState extends State<MapScreen> {
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),
-            _summaryRow(Icons.timer_outlined, 'Travel time', summary.elapsedLabel),
+            _summaryRow(
+              Icons.timer_outlined,
+              'Travel time',
+              summary.elapsedLabel,
+            ),
             const SizedBox(height: 12),
             _summaryRow(
               Icons.directions_walk,
@@ -567,7 +715,8 @@ class _MapScreenState extends State<MapScreen> {
     final activeUser = context.watch<AppState>().activeUser;
     final padding = MediaQuery.paddingOf(context);
 
-    final initialCoordinate = _lastKnownCoordinate ??
+    final initialCoordinate =
+        _lastKnownCoordinate ??
         const NavigationCoordinate(latitude: csulbLat, longitude: csulbLng);
 
     return Scaffold(
@@ -617,9 +766,9 @@ class _MapScreenState extends State<MapScreen> {
             ),
           Positioned(
             right: 16,
-            bottom:
-                (_route == null ? 24 : 210) +
-                (_navigating ? padding.bottom : 0),
+            bottom: _route == null
+                ? 24
+                : (_navigating ? 142 + padding.bottom : 294),
             child: FloatingActionButton.small(
               heroTag: 'recenter',
               backgroundColor: Colors.white,
@@ -643,10 +792,43 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           if (_loadingRoute)
-            const Positioned.fill(
+            Positioned.fill(
               child: ColoredBox(
-                color: Color(0x33000000),
-                child: Center(child: CircularProgressIndicator()),
+                color: const Color(0x3D002B5B),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 18,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        SizedBox(width: 14),
+                        Text(
+                          'Finding the best walking route…',
+                          style: TextStyle(
+                            color: AppColors.navy,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (_route != null && _destination != null)
@@ -692,70 +874,191 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _routeCard(NavigationRoute route, NaviDestination destination) {
+    if (_navigating) {
+      return Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AppColors.accentSoft,
+                child: Icon(Icons.directions_walk, color: AppColors.amberInk),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      destination.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${route.durationLabel} • ${route.distanceLabel}',
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _stopNavigation,
+                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                icon: const Icon(Icons.stop_circle_outlined),
+                label: const Text('End'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Material(
       elevation: 8,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFFFFF1C2),
-                  child: Icon(Icons.directions_walk, color: AppColors.amberInk),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        destination.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '${route.durationLabel} • ${route.distanceLabel}',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentSoft,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Text(
+                    'ROUTE PREVIEW',
+                    style: TextStyle(
+                      color: AppColors.amberInk,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .8,
+                    ),
                   ),
                 ),
+                const Spacer(),
                 IconButton(
                   onPressed: _clearRoute,
-                  icon: const Icon(Icons.close),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Close route preview',
+                  icon: const Icon(Icons.close, color: AppColors.muted),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _navigating ? _stopNavigation : _startNavigation,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _navigating
-                      ? AppColors.danger
-                      : AppColors.navy,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: const StadiumBorder(),
+            const SizedBox(height: 4),
+            Text(
+              destination.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (destination.address.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                destination.address,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _routeStat(
+                    Icons.schedule_rounded,
+                    route.durationLabel,
+                    'Estimated',
+                  ),
                 ),
-                icon: Icon(_navigating ? Icons.stop : Icons.navigation),
-                label: Text(_navigating ? 'End Navigation' : 'Start Walking'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _routeStat(
+                    Icons.straighten_rounded,
+                    route.distanceLabel,
+                    'Distance',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _routeStat(
+                    Icons.directions_walk_rounded,
+                    'Walking',
+                    'Route type',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              key: const ValueKey('confirm-navigation-button'),
+              onPressed: _startNavigation,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.navy,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: const StadiumBorder(),
+              ),
+              icon: const Icon(Icons.navigation_rounded),
+              label: const Text(
+                'Confirm navigation',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _routeStat(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.screenBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: AppColors.navy),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.muted, fontSize: 9),
+          ),
+        ],
       ),
     );
   }

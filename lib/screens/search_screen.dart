@@ -173,8 +173,10 @@ class _SearchScreenState extends State<SearchScreen> {
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
+            autofocus: true,
             onChanged: _onQueryChanged,
             textInputAction: TextInputAction.search,
+            textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
               hintText: 'Where to, explorer?',
               prefixIcon: const Icon(Icons.search, size: 21),
@@ -233,30 +235,93 @@ class _SearchScreenState extends State<SearchScreen> {
     if (!_loading && _suggestions.isEmpty) {
       return const Center(child: Text('No destinations found.'));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _suggestions.length,
-      separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-      itemBuilder: (_, index) {
-        final suggestion = _suggestions[index];
-        return ListTile(
-          enabled: !_loading,
-          leading: const CircleAvatar(
-            backgroundColor: Color(0xFFFFF1C2),
-            child: Icon(Icons.location_on_outlined, color: AppColors.amberInk),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+          child: Text(
+            'Search results',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.navy,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          title: Text(suggestion.name),
-          subtitle: suggestion.description.isEmpty
-              ? null
-              : Text(
-                  suggestion.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+            itemCount: _suggestions.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final suggestion = _suggestions[index];
+              return Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: _loading ? null : () => _selectSuggestion(suggestion),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.line),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(
+                          backgroundColor: AppColors.accentSoft,
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            color: AppColors.amberInk,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                suggestion.name,
+                                style: const TextStyle(
+                                  color: AppColors.ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (suggestion.description.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  suggestion.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 12,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 15,
+                          color: AppColors.faint,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-          trailing: const Icon(Icons.north_west, size: 18),
-          onTap: () => _selectSuggestion(suggestion),
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

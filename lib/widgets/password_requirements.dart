@@ -62,13 +62,18 @@ class _Requirement extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            satisfied ? Icons.check_circle : Icons.radio_button_unchecked,
-            key: ValueKey(
-              'password-requirement-${satisfied ? 'met' : 'unmet'}-$label',
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: Icon(
+              satisfied ? Icons.check_circle : Icons.circle_outlined,
+              key: ValueKey(
+                'password-requirement-${satisfied ? 'met' : 'unmet'}-$label',
+              ),
+              size: 16,
+              color: color,
             ),
-            size: 16,
-            color: color,
           ),
           const SizedBox(width: 4),
           Text(label, style: TextStyle(fontSize: 11, color: color)),
