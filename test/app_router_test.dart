@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:navipet/data/app_state.dart';
 import 'package:navipet/router/app_router.dart';
-import 'package:navipet/screens/auth_recovery_screens.dart';
+import 'package:navipet/screens/reset_password_screen.dart';
 import 'package:navipet/screens/sign_in_screen.dart';
 
 class _RouterAppState extends AppState {
@@ -26,6 +26,9 @@ class _RouterAppState extends AppState {
 
   @override
   bool get hasPasswordRecoverySession => recoverySession;
+
+  @override
+  bool get hasPendingPasswordRecovery => recoverySession;
 }
 
 void main() {
@@ -54,7 +57,7 @@ void main() {
   );
 
   testWidgets(
-    'routes a backend recovery session to /new-password while signed out',
+    'allows a verified recovery session to open Reset Password while signed out',
     (tester) async {
       final appState = _RouterAppState(
         authenticated: false,
@@ -71,10 +74,11 @@ void main() {
           child: MaterialApp.router(routerConfig: router),
         ),
       );
+      router.go('/reset-password');
       await tester.pumpAndSettle();
 
-      expect(router.routeInformationProvider.value.uri.path, '/new-password');
-      expect(find.byType(NewPasswordScreen), findsOneWidget);
+      expect(router.routeInformationProvider.value.uri.path, '/reset-password');
+      expect(find.byType(ResetPasswordScreen), findsOneWidget);
     },
   );
 }

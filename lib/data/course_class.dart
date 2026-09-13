@@ -23,12 +23,11 @@ class CourseClass {
   final double latitude;
   final double longitude;
 
-  String get locationLabel => room.trim().isEmpty ? building : '$building $room';
+  String get locationLabel =>
+      room.trim().isEmpty ? building : '$building $room';
 
-  NavigationCoordinate get coordinate => NavigationCoordinate(
-    latitude: latitude,
-    longitude: longitude,
-  );
+  NavigationCoordinate get coordinate =>
+      NavigationCoordinate(latitude: latitude, longitude: longitude);
 
   NaviDestination get destination => NaviDestination(
     name: locationLabel,
@@ -106,8 +105,7 @@ class DailyClassTask {
   final int reward;
   final bool done;
 
-  String keyFor(DateTime date) =>
-      '${course.id}|${_dateKey(date)}|$kind';
+  String keyFor(DateTime date) => '${course.id}|${_dateKey(date)}|$kind';
 }
 
 String dailyCompletionKey(String classId, DateTime date, String kind) =>

@@ -30,7 +30,8 @@ class SearchHistoryStore {
       destination,
       ...current.where(
         (item) =>
-            item.name != destination.name || item.address != destination.address,
+            item.name != destination.name ||
+            item.address != destination.address,
       ),
     ].take(maxItems).toList();
     final preferences = await SharedPreferences.getInstance();
@@ -55,4 +56,3 @@ class SearchHistoryStore {
     await preferences.remove(_storageKey);
   }
 }
-

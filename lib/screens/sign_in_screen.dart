@@ -40,17 +40,10 @@ class _SignInScreenState extends State<SignInScreen> {
     switch (result.status) {
       case AuthActionStatus.authenticated:
         context.go('/map');
-<<<<<<< Updated upstream
-      case AuthActionStatus.emailConfirmationRequired:
-      case AuthActionStatus.passwordResetSent:
-      case AuthActionStatus.passwordRecoveryReady:
-      case AuthActionStatus.passwordUpdated:
-=======
       case AuthActionStatus.emailVerificationRequired:
       case AuthActionStatus.passwordResetCodeSent:
       case AuthActionStatus.passwordRecoveryVerified:
       case AuthActionStatus.codeResent:
->>>>>>> Stashed changes
         break;
       case AuthActionStatus.failure:
         _showMessage(result.message ?? 'Authentication failed.');
@@ -147,11 +140,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: TextButton(
                       onPressed: appState.isBusy
                           ? null
-<<<<<<< Updated upstream
-                          : () => context.push('/forgot-password'),
-=======
                           : () => context.go('/forgot-password'),
->>>>>>> Stashed changes
                       child: const Text('Forgot password?'),
                     ),
                   ),

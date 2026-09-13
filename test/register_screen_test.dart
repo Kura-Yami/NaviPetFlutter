@@ -87,15 +87,9 @@ Widget _harness(AppState appState) {
       ),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
       GoRoute(
-<<<<<<< Updated upstream
-        path: '/check-email',
-        builder: (_, state) => Scaffold(
-          body: Text('Check email: ${state.uri.queryParameters['email']}'),
-=======
         path: '/verify-email',
         builder: (_, state) => Scaffold(
           body: Text('Verify ${state.uri.queryParameters['email'] ?? ''}'),
->>>>>>> Stashed changes
         ),
       ),
       GoRoute(
@@ -121,7 +115,6 @@ Future<void> _fillValidForm(WidgetTester tester) async {
 
 ElevatedButton _submitButton(WidgetTester tester) =>
     tester.widget<ElevatedButton>(
-<<<<<<< Updated upstream
       find.widgetWithText(ElevatedButton, 'Create account'),
     );
 
@@ -131,10 +124,6 @@ Future<void> _acceptTerms(WidgetTester tester) async {
   await tester.tap(find.byType(Checkbox));
   await tester.pump();
 }
-=======
-      find.widgetWithText(ElevatedButton, 'Create Account'),
-    );
->>>>>>> Stashed changes
 
 void main() {
   group('RegisterScreen validation', () {
@@ -234,8 +223,8 @@ void main() {
       await _fillValidForm(tester);
       await tester.enterText(find.byType(TextField).at(3), 'password1!');
       await tester.enterText(find.byType(TextField).at(4), 'password1!');
-      await tester.tap(find.byType(Checkbox));
-      await tester.pump();
+      await _acceptTerms(tester);
+      await tester.pumpAndSettle();
 
       expect(_submitButton(tester).onPressed, isNull);
       expect(
@@ -286,7 +275,9 @@ void main() {
         find.byType(TextField).at(2),
         'person@example.com',
       );
-      await tester.tap(find.text('Already have a verification code?'));
+      final verificationLink = find.text('Already have a verification code?');
+      await tester.ensureVisible(verificationLink);
+      await tester.tap(verificationLink);
       await tester.pumpAndSettle();
 
       expect(find.text('Verify person@example.com'), findsOneWidget);
@@ -309,9 +300,10 @@ void main() {
       await tester.pumpWidget(_harness(appState));
 
       await _fillValidForm(tester);
-      await tester.tap(find.byType(Checkbox));
-      await tester.pump();
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Create Account'));
+      await _acceptTerms(tester);
+      final submit = find.widgetWithText(ElevatedButton, 'Create account');
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
       await tester.pump();
 
       expect(
@@ -324,11 +316,7 @@ void main() {
     });
 
     testWidgets(
-<<<<<<< Updated upstream
-      'opens the check-email screen and does not navigate to /map on success',
-=======
       'opens code verification with the registered email on success',
->>>>>>> Stashed changes
       (tester) async {
         final gateway = _FakeRegistrationGateway(
           result: const RegistrationSuccess(
@@ -351,11 +339,7 @@ void main() {
         expect(gateway.callCount, 1);
         expect(gateway.capturedFirstName, 'Elbee');
         expect(gateway.capturedLastName, 'Shark');
-<<<<<<< Updated upstream
-        expect(find.text('Check email: person@example.com'), findsOneWidget);
-=======
         expect(find.text('Verify person@example.com'), findsOneWidget);
->>>>>>> Stashed changes
         expect(find.text('Map screen'), findsNothing);
         expect(appState.isAuthenticated, isFalse);
       },

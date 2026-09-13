@@ -41,7 +41,6 @@ class AppState extends ChangeNotifier {
 
     _applyUser(_supabase.auth.currentUser);
     _authSubscription = _supabase.auth.onAuthStateChange.listen((event) {
-      _isPasswordRecovery = event.event == AuthChangeEvent.passwordRecovery;
       _applyUser(event.session?.user);
     });
   }
@@ -62,8 +61,6 @@ class AppState extends ChangeNotifier {
 
   UserAccount? _activeUser;
   bool _busy = false;
-  bool _isPasswordRecovery = false;
-  AuthTokens? _passwordRecoveryTokens;
   String? _errorMessage;
   List<CourseClass> _classes = const [];
   Set<String> _completionKeys = const {};
@@ -77,14 +74,8 @@ class AppState extends ChangeNotifier {
   bool get isAuthenticated =>
       !_passwordRecoveryInProgress && _supabase?.auth.currentSession != null;
   bool get isBusy => _busy;
-  bool get isPasswordRecovery => _isPasswordRecovery;
-
-  /// True while the backend recovery session from `/auth/verify-otp` is held.
-  ///
-  /// This session deliberately lives outside the Supabase SDK, so it is not
-  /// reflected by [isAuthenticated] and the router has to gate `/new-password`
-  /// on this flag instead.
-  bool get hasPasswordRecoverySession => _passwordRecoveryTokens != null;
+  bool get isPasswordRecovery => _passwordRecoveryInProgress;
+  bool get hasPasswordRecoverySession => _pendingRecoverySession != null;
 
   String? get errorMessage => _errorMessage;
   UserAccount? get activeUser => _activeUser;
@@ -208,36 +199,11 @@ class AppState extends ChangeNotifier {
     required String password,
   }) async {
     return _runAuthAction(() async {
-<<<<<<< Updated upstream
-      final client = _requireClient();
-      final gateway = _registrationGateway;
-      if (gateway is BackendAuthGateway) {
-        final tokens = await gateway.login(
-          email: email.trim(),
-          password: password,
-        );
-        final response = await client.auth.setSession(tokens.refreshToken);
-        if (response.user == null) {
-          return const AuthActionResult.failure(
-            'Sign in did not return a user.',
-          );
-        }
-        return const AuthActionResult.authenticated();
-      }
-      final response = await client.auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
-      );
-      if (response.user == null) {
-        return const AuthActionResult.failure('Sign in did not return a user.');
-      }
-=======
       final tokens = await _requireRegistrationGateway().signIn(
         email: email.trim(),
         password: password,
       );
       await _establishSession(tokens);
->>>>>>> Stashed changes
       return const AuthActionResult.authenticated();
     });
   }
@@ -249,41 +215,15 @@ class AppState extends ChangeNotifier {
     required String password,
   }) async {
     return _runAuthAction(() async {
-<<<<<<< Updated upstream
-      final gateway = _registrationGateway;
-      if (gateway != null) {
-        final result = await gateway.register(
-=======
       final gateway = _requireRegistrationGateway();
       late final RegistrationSuccess result;
       try {
         result = await gateway.register(
->>>>>>> Stashed changes
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim(),
           password: password,
         );
-<<<<<<< Updated upstream
-        return AuthActionResult.emailConfirmationRequired(result.message);
-      }
-
-      final response = await _requireClient().auth.signUp(
-        email: email.trim(),
-        password: password,
-        emailRedirectTo: 'navipet://auth-callback',
-        data: {
-          'first_name': firstName.trim(),
-          'last_name': lastName.trim(),
-          'display_name': '${firstName.trim()} ${lastName.trim()}'.trim(),
-        },
-      );
-      return response.session == null
-          ? const AuthActionResult.emailConfirmationRequired(
-              'Confirmation email sent. Check your inbox.',
-            )
-          : const AuthActionResult.authenticated();
-=======
       } on RegistrationException catch (error) {
         if (_isExistingAccountError(error)) {
           throw const RegistrationException(
@@ -408,7 +348,6 @@ class AppState extends ChangeNotifier {
       _passwordRecoveryInProgress = false;
       notifyListeners();
       return const AuthActionResult.authenticated();
->>>>>>> Stashed changes
     });
   }
 
@@ -426,143 +365,10 @@ class AppState extends ChangeNotifier {
     });
   }
 
-<<<<<<< Updated upstream
-  Future<AuthActionResult> sendPasswordReset(String email) async {
-    return _runAuthAction(() async {
-      final gateway = _registrationGateway;
-      if (gateway is BackendAuthGateway) {
-        await gateway.requestPasswordReset(email.trim());
-        return const AuthActionResult.passwordResetSent();
-      }
-      await _requireClient().auth.resetPasswordForEmail(
-        email.trim(),
-        redirectTo: 'navipet://auth-callback',
-      );
-      return const AuthActionResult.passwordResetSent();
-    });
-  }
-
-  Future<AuthActionResult> verifyEmailCode({
-    required String email,
-    required String code,
-    required bool isPasswordRecovery,
-  }) async {
-    return _runAuthAction(() async {
-      final gateway = _registrationGateway;
-      if (gateway is BackendAuthGateway) {
-        final tokens = await gateway.verifyOtp(
-          email: email.trim(),
-          code: code.trim(),
-          isPasswordRecovery: isPasswordRecovery,
-        );
-        if (isPasswordRecovery) {
-          // The recovery session belongs to `/auth/reset-password` and nothing
-          // else. Handing its refresh token to the Supabase SDK rotates the
-          // token, which retires the session the recovery *access* token names,
-          // and step 3 then fails with:
-          //   Session from session_id claim in JWT does not exist
-          // So hold the tokens here and make no Supabase call until the reset
-          // has completed.
-          _passwordRecoveryTokens = tokens;
-          return const AuthActionResult.passwordRecoveryReady();
-        }
-        final response = await _requireClient().auth.setSession(
-          tokens.refreshToken,
-        );
-        _isPasswordRecovery = false;
-        if (response.user == null) {
-          return const AuthActionResult.failure(
-            'Verification did not return a user.',
-          );
-        }
-        return const AuthActionResult.authenticated();
-      }
-      final response = await _requireClient().auth.verifyOTP(
-        email: email.trim(),
-        token: code.trim(),
-        type: isPasswordRecovery ? OtpType.recovery : OtpType.signup,
-      );
-      _isPasswordRecovery = isPasswordRecovery;
-      if (response.user == null) {
-        return const AuthActionResult.failure(
-          'Verification did not return a user.',
-        );
-      }
-      return const AuthActionResult.authenticated();
-    });
-  }
-
-  Future<AuthActionResult> resendVerificationCode({
-    required String email,
-    required bool isPasswordRecovery,
-  }) async {
-    if (isPasswordRecovery) return sendPasswordReset(email);
-    return _runAuthAction(() async {
-      await _requireClient().auth.resend(
-        type: OtpType.signup,
-        email: email.trim(),
-      );
-      return const AuthActionResult.emailConfirmationRequired();
-    });
-  }
-
-  Future<AuthActionResult> updatePassword(String password) async {
-    return _runAuthAction(() async {
-      final gateway = _registrationGateway;
-      if (gateway is BackendAuthGateway) {
-        final recovery = _passwordRecoveryTokens;
-        if (recovery == null) {
-          return const AuthActionResult.failure(
-            'Your password reset session has expired. Request a new code.',
-            code: 'INVALID_ACCESS_TOKEN',
-          );
-        }
-        try {
-          await gateway.resetPassword(
-            accessToken: recovery.accessToken,
-            newPassword: password,
-          );
-        } on RegistrationException catch (error) {
-          // A rejected token cannot be retried on the same screen — the flow
-          // has to restart at `/auth/forgot-password`. Every other code
-          // (422 / 429 / 500) keeps the session so the user can correct the
-          // password in place.
-          if (error.code == 'INVALID_ACCESS_TOKEN') _clearPasswordRecovery();
-          rethrow;
-        }
-        // A 204 leaves the recovery session alive, but this app sends the user
-        // to the sign-in screen with the new password, so the tokens are simply
-        // dropped. No Supabase call belongs here: the reset flow never gave the
-        // SDK a session to sign out of.
-        _clearPasswordRecovery();
-        return const AuthActionResult.passwordUpdated();
-      }
-
-      await _requireClient().auth.updateUser(UserAttributes(password: password));
-      _clearPasswordRecovery();
-      await _requireClient().auth.signOut();
-      return const AuthActionResult.passwordUpdated();
-    });
-  }
-
-  /// Abandons an in-progress reset. The backend session simply expires on its
-  /// own after an hour; nothing needs to be revoked here.
-  void discardPasswordRecovery() => _clearPasswordRecovery();
-
-  void _clearPasswordRecovery() {
-    _passwordRecoveryTokens = null;
-    _isPasswordRecovery = false;
-    notifyListeners();
-  }
-
-=======
->>>>>>> Stashed changes
   Future<void> signOut() async {
     _setBusy(true);
     try {
       await _requireClient().auth.signOut();
-      _isPasswordRecovery = false;
-      _passwordRecoveryTokens = null;
       _activeUser = null;
       _pendingRecoverySession = null;
       _errorMessage = null;
@@ -589,24 +395,11 @@ class AppState extends ChangeNotifier {
       return AuthActionResult.failure(error.message);
     } on RegistrationException catch (error) {
       _errorMessage = error.message;
-<<<<<<< Updated upstream
-      return AuthActionResult.failure(error.message, code: error.code);
-    } on TimeoutException {
-      const message =
-          'The request timed out. Check your connection and try again.';
-      _errorMessage = message;
-      return const AuthActionResult.failure(message);
-    } on StateError catch (error) {
-      final message = error.message.toString();
-      _errorMessage = message;
-      return AuthActionResult.failure(message);
-=======
       return AuthActionResult.failure(
         error.message,
         errorCode: error.code,
         statusCode: error.statusCode,
       );
->>>>>>> Stashed changes
     } catch (error) {
       _errorMessage = error.toString();
       return AuthActionResult.failure(
@@ -630,9 +423,6 @@ class AppState extends ChangeNotifier {
     return client;
   }
 
-<<<<<<< Updated upstream
-  void _applyUser(User? user) {
-=======
   RegistrationGateway _requireRegistrationGateway() {
     final gateway = _registrationGateway;
     if (gateway == null) {
@@ -714,7 +504,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _applyUser(User? user) async {
->>>>>>> Stashed changes
     if (user == null) {
       _activeUser = null;
       _classes = const [];
@@ -764,34 +553,20 @@ class AppState extends ChangeNotifier {
 
 enum AuthActionStatus {
   authenticated,
-<<<<<<< Updated upstream
-  emailConfirmationRequired,
-  passwordResetSent,
-
-  /// A recovery code was verified and the reset session is held in memory.
-  /// The user is *not* signed in — only `/auth/reset-password` may be called.
-  passwordRecoveryReady,
-  passwordUpdated,
-=======
   emailVerificationRequired,
   passwordResetCodeSent,
   passwordRecoveryVerified,
   codeResent,
->>>>>>> Stashed changes
   failure,
 }
 
 class AuthActionResult {
-<<<<<<< Updated upstream
-  const AuthActionResult._(this.status, [this.message, this.code]);
-=======
   const AuthActionResult._(
     this.status, {
     this.message,
     this.errorCode,
     this.statusCode,
   });
->>>>>>> Stashed changes
 
   const AuthActionResult.authenticated()
     : this._(AuthActionStatus.authenticated);
@@ -802,23 +577,6 @@ class AuthActionResult {
   const AuthActionResult.passwordResetCodeSent([String? message])
     : this._(AuthActionStatus.passwordResetCodeSent, message: message);
 
-<<<<<<< Updated upstream
-  const AuthActionResult.passwordRecoveryReady()
-    : this._(AuthActionStatus.passwordRecoveryReady);
-
-  const AuthActionResult.passwordUpdated()
-    : this._(AuthActionStatus.passwordUpdated);
-
-  const AuthActionResult.failure(String message, {String? code})
-    : this._(AuthActionStatus.failure, message, code);
-
-  final AuthActionStatus status;
-  final String? message;
-
-  /// The backend's `error.code`, when the failure came from the NaviPet API.
-  /// Branch on this rather than on [message].
-  final String? code;
-=======
   const AuthActionResult.passwordRecoveryVerified()
     : this._(AuthActionStatus.passwordRecoveryVerified);
 
@@ -840,5 +598,4 @@ class AuthActionResult {
   final String? message;
   final String? errorCode;
   final int? statusCode;
->>>>>>> Stashed changes
 }

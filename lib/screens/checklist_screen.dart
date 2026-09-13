@@ -33,7 +33,8 @@ class ChecklistScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         leading: IconButton(
-          onPressed: () => context.canPop() ? context.pop() : context.go('/map'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/map'),
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Achievements'),
@@ -60,7 +61,10 @@ class ChecklistScreen extends StatelessWidget {
           children: [
             _intro(context),
             const SizedBox(height: 24),
-            _sectionTitle('Class achievements', '${state.classes.length} classes'),
+            _sectionTitle(
+              'Class achievements',
+              '${state.classes.length} classes',
+            ),
             const SizedBox(height: 12),
             if (state.classesBusy && state.classes.isEmpty)
               const Center(child: CircularProgressIndicator())
@@ -125,9 +129,19 @@ class ChecklistScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your class journey', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17)),
+              Text(
+                'Your class journey',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+              ),
               SizedBox(height: 4),
-              Text('Complete class-aware tasks to grow your achievements.', style: TextStyle(color: Color(0xFFD9E6F4), fontSize: 12)),
+              Text(
+                'Complete class-aware tasks to grow your achievements.',
+                style: TextStyle(color: Color(0xFFD9E6F4), fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -138,8 +152,18 @@ class ChecklistScreen extends StatelessWidget {
   Widget _sectionTitle(String title, String detail) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.petInk)),
-      Text(detail, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+      Text(
+        title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: AppColors.petInk,
+        ),
+      ),
+      Text(
+        detail,
+        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+      ),
     ],
   );
 
@@ -148,13 +172,26 @@ class ChecklistScreen extends StatelessWidget {
     borderRadius: BorderRadius.circular(14),
     child: Container(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.cardBorder)),
-      child: const Column(children: [
-        Icon(Icons.school_outlined, size: 38, color: AppColors.petInk),
-        SizedBox(height: 8),
-        Text('Add your first class', style: TextStyle(fontWeight: FontWeight.w700)),
-        Text('Your tasks, achievements, and nearby places will adapt automatically.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 12)),
-      ]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.school_outlined, size: 38, color: AppColors.petInk),
+          SizedBox(height: 8),
+          Text(
+            'Add your first class',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          Text(
+            'Your tasks, achievements, and nearby places will adapt automatically.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -165,45 +202,126 @@ class ChecklistScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: const Border(left: BorderSide(color: AppColors.yellow, width: 4)), boxShadow: AppShadows.soft),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: const Border(
+            left: BorderSide(color: AppColors.yellow, width: 4),
+          ),
+          boxShadow: AppShadows.soft,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Icon(Icons.workspace_premium_outlined, size: 30, color: AppColors.petInk),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(course.courseCode, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              Text(course.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-              const SizedBox(height: 10),
-              Row(children: List.generate(5, (index) => Expanded(child: Container(height: 7, margin: EdgeInsets.only(right: index == 4 ? 0 : 3), decoration: BoxDecoration(color: index < progress ? AppColors.yellow : AppColors.cardBorder, borderRadius: BorderRadius.circular(8)))))),
-              const SizedBox(height: 6),
-              Text('$count tasks completed · Tap to edit', style: const TextStyle(fontSize: 10, color: AppColors.faint)),
-            ]),
+            const Icon(
+              Icons.workspace_premium_outlined,
+              size: 30,
+              color: AppColors.petInk,
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  course.courseCode,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  course.courseName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: List.generate(
+                    5,
+                    (index) => Expanded(
+                      child: Container(
+                        height: 7,
+                        margin: EdgeInsets.only(right: index == 4 ? 0 : 3),
+                        decoration: BoxDecoration(
+                          color: index < progress
+                              ? AppColors.yellow
+                              : AppColors.cardBorder,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$count tasks completed · Tap to edit',
+                  style: const TextStyle(fontSize: 10, color: AppColors.faint),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _taskList(BuildContext context, AppState state, List<DailyClassTask> tasks) => Container(
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: AppShadows.soft),
-    child: Column(children: [
-      for (var index = 0; index < tasks.length; index++) ...[
-        ListTile(
-          onTap: () async {
-            try {
-              await state.toggleTask(tasks[index], DateTime.now());
-            } catch (error) {
-              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update task: $error')));
-            }
-          },
-          leading: Checkbox(value: tasks[index].done, activeColor: AppColors.petInk, onChanged: (_) => state.toggleTask(tasks[index], DateTime.now())),
-          title: Text(tasks[index].label, style: TextStyle(decoration: tasks[index].done ? TextDecoration.lineThrough : null)),
-          subtitle: Text('${tasks[index].course.startTime} · ${tasks[index].course.courseName}', maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: tasks[index].done ? const Icon(Icons.check_circle, color: AppColors.green) : Text('+${tasks[index].reward} 💎', style: const TextStyle(color: AppColors.gemInk, fontWeight: FontWeight.w700)),
-        ),
-        if (index < tasks.length - 1) const Divider(height: 1, indent: 64),
+  Widget _taskList(
+    BuildContext context,
+    AppState state,
+    List<DailyClassTask> tasks,
+  ) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: AppShadows.soft,
+    ),
+    child: Column(
+      children: [
+        for (var index = 0; index < tasks.length; index++) ...[
+          ListTile(
+            onTap: () async {
+              try {
+                await state.toggleTask(tasks[index], DateTime.now());
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not update task: $error')),
+                  );
+                }
+              }
+            },
+            leading: Checkbox(
+              value: tasks[index].done,
+              activeColor: AppColors.petInk,
+              onChanged: (_) => state.toggleTask(tasks[index], DateTime.now()),
+            ),
+            title: Text(
+              tasks[index].label,
+              style: TextStyle(
+                decoration: tasks[index].done
+                    ? TextDecoration.lineThrough
+                    : null,
+              ),
+            ),
+            subtitle: Text(
+              '${tasks[index].course.startTime} · ${tasks[index].course.courseName}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: tasks[index].done
+                ? const Icon(Icons.check_circle, color: AppColors.green)
+                : Text(
+                    '+${tasks[index].reward} 💎',
+                    style: const TextStyle(
+                      color: AppColors.gemInk,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+          if (index < tasks.length - 1) const Divider(height: 1, indent: 64),
+        ],
       ],
-    ]),
+    ),
   );
 }

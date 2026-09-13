@@ -20,11 +20,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-<<<<<<< Updated upstream
-  static final _digitPattern = RegExp(r'\d');
-  static final _specialCharPattern = RegExp(r'[^A-Za-z0-9]');
-=======
->>>>>>> Stashed changes
 
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -101,11 +96,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     switch (result.status) {
-<<<<<<< Updated upstream
-      case AuthActionStatus.emailConfirmationRequired:
-        final email = Uri.encodeQueryComponent(_emailController.text.trim());
-        context.go('/check-email?email=$email&purpose=signup');
-=======
       case AuthActionStatus.emailVerificationRequired:
         final email = _emailController.text.trim();
         context.go(
@@ -114,23 +104,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             queryParameters: {'email': email},
           ).toString(),
         );
->>>>>>> Stashed changes
       case AuthActionStatus.failure:
         setState(() {
           _statusMessage = result.message ?? 'Registration failed.';
           _statusIsError = true;
         });
       case AuthActionStatus.authenticated:
-<<<<<<< Updated upstream
-        context.go('/map');
-      case AuthActionStatus.passwordResetSent:
-      case AuthActionStatus.passwordRecoveryReady:
-      case AuthActionStatus.passwordUpdated:
-=======
       case AuthActionStatus.passwordResetCodeSent:
       case AuthActionStatus.passwordRecoveryVerified:
       case AuthActionStatus.codeResent:
->>>>>>> Stashed changes
         break;
     }
   }
@@ -240,13 +222,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
-<<<<<<< Updated upstream
-                  const SizedBox(height: 16),
-=======
                   const SizedBox(height: 6),
                   PasswordRequirements(password: _passwordController.text),
                   const SizedBox(height: 6),
->>>>>>> Stashed changes
                   _field(
                     label: 'Confirm Password',
                     controller: _confirmPasswordController,
@@ -274,14 +252,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   _termsRow(),
                   const SizedBox(height: 20),
                   _submitButton(appState),
-<<<<<<< Updated upstream
-                  const SizedBox(height: 18),
-=======
                   TextButton(
                     onPressed: appState.isBusy ? null : _goToVerification,
                     child: const Text('Already have a verification code?'),
                   ),
->>>>>>> Stashed changes
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
