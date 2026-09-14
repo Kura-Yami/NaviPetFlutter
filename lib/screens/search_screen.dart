@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -5,46 +6,30 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_state.dart';
-import '../data/app_config.dart';
-import '../data/campus_place.dart';
-import '../data/campus_search_controller.dart';
-import '../data/campus_search_gateway.dart';
 import '../data/course_class.dart';
 import '../data/mapbox_config.dart';
+import '../data/mapbox_navigation_service.dart';
 import '../data/navigation_models.dart';
 import '../data/search_history_store.dart';
-import '../data/search_location_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/campus_search_result_tile.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({
-    super.key,
-    this.gateway,
-    this.locationProvider,
-    this.historyStore,
-    this.debounce = const Duration(milliseconds: 275),
-    this.onSelected,
-  });
-
-  final CampusSearchGateway? gateway;
-  final SearchLocationProvider? locationProvider;
-  final SearchHistoryStore? historyStore;
-  final Duration debounce;
-  final ValueChanged<NaviDestination>? onSelected;
+  const SearchScreen({super.key});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  late final CampusSearchGateway _gateway;
-  late final SearchHistoryStore _historyStore;
-  late final CampusSearchController _searchController;
-  late final bool _ownsGateway;
+  late final MapboxNavigationService _service;
+  final _historyStore = SearchHistoryStore();
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  Timer? _debounce;
+  List<PlaceSuggestion> _suggestions = const [];
   List<NaviDestination> _recent = const [];
+  bool _loading = false;
+  String? _error;
 
   static const _campusDestinations = [
     NaviDestination(
@@ -67,21 +52,8 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _ownsGateway = widget.gateway == null;
-    _gateway =
-        widget.gateway ??
-        HttpCampusSearchGateway(baseUrl: AppConfig.backendBaseUrl);
-    _historyStore = widget.historyStore ?? SearchHistoryStore();
-    _searchController = CampusSearchController(
-      gateway: _gateway,
-      location: widget.locationProvider ?? GeolocatorSearchLocationProvider(),
-      debounce: widget.debounce,
-    )..addListener(_onSearchStateChanged);
+    _service = MapboxNavigationService(accessToken: mapboxPublicToken);
     _loadHistory();
-  }
-
-  void _onSearchStateChanged() {
-    if (mounted) setState(() {});
   }
 
   Future<void> _loadHistory() async {
@@ -96,15 +68,10 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
-    _searchController
-      ..removeListener(_onSearchStateChanged)
-      ..dispose();
+    _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
-    final gateway = _gateway;
-    if (_ownsGateway && gateway is HttpCampusSearchGateway) {
-      gateway.dispose();
-    }
+    _service.dispose();
     super.dispose();
   }
 
@@ -127,23 +94,59 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onQueryChanged(String value) {
-    _searchController.queryChanged(value);
+    _debounce?.cancel();
+    setState(() {});
+    if (value.trim().length < 2) {
+      setState(() {
+        _suggestions = const [];
+        _error = null;
+        _loading = false;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () => _search(value));
   }
 
-  Future<void> _selectSuggestion(CampusPlace suggestion) async {
-    final destination = await _searchController.select(suggestion);
-    if (destination != null) await _finish(destination);
+  Future<void> _search(String query) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final suggestions = await _service.suggestPlaces(
+        query,
+        proximity: _anchor(),
+      );
+      if (!mounted || query != _controller.text) return;
+      setState(() => _suggestions = suggestions);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final destination = await _service.retrievePlace(suggestion);
+      await _finish(destination);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = error.toString();
+        });
+      }
+    }
   }
 
   Future<void> _finish(NaviDestination destination) async {
     _recent = await _historyStore.add(destination);
-    if (!mounted) return;
-    final onSelected = widget.onSelected;
-    if (onSelected != null) {
-      onSelected(destination);
-    } else {
-      context.pop(destination);
-    }
+    if (mounted) context.pop(destination);
   }
 
   Future<void> _clearHistory() async {
@@ -170,8 +173,10 @@ class _SearchScreenState extends State<SearchScreen> {
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
+            autofocus: true,
             onChanged: _onQueryChanged,
             textInputAction: TextInputAction.search,
+            textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(
               hintText: 'Where to, explorer?',
               prefixIcon: const Icon(Icons.search, size: 21),
@@ -204,10 +209,18 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          if (_searchController.status == CampusSearchStatus.loading)
+          if (_loading)
             const LinearProgressIndicator(
               minHeight: 2,
               color: AppColors.yellow,
+            ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: AppColors.danger),
+              ),
             ),
           Expanded(child: hasQuery ? _results() : _discovery()),
         ],
@@ -216,66 +229,101 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _results() {
-    switch (_searchController.status) {
-      case CampusSearchStatus.initial:
-      case CampusSearchStatus.typing:
-        return const SizedBox.shrink();
-      case CampusSearchStatus.loading:
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.yellow),
-        );
-      case CampusSearchStatus.noResults:
-        return const Center(child: Text('No destinations found.'));
-      case CampusSearchStatus.offline:
-        return _stateMessage(
-          'You’re offline. Check your connection and retry.',
-        );
-      case CampusSearchStatus.permissionRequired:
-        return _stateMessage(
-          'Location permission is required for nearby searches.',
-        );
-      case CampusSearchStatus.locationUnavailable:
-        return _stateMessage(
-          'Location is unavailable. Turn on Location Services and retry.',
-        );
-      case CampusSearchStatus.apiError:
-        return _stateMessage(
-          _searchController.message ??
-              'Campus search is unavailable. Please retry.',
-        );
-      case CampusSearchStatus.results:
-        break;
+    if (_controller.text.trim().length < 2) {
+      return const Center(child: Text('Type at least two characters.'));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _searchController.results.length,
-      separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-      itemBuilder: (_, index) {
-        final suggestion = _searchController.results[index];
-        return CampusSearchResultTile(
-          place: suggestion,
-          onTap: () => _selectSuggestion(suggestion),
-        );
-      },
+    if (!_loading && _suggestions.isEmpty) {
+      return const Center(child: Text('No destinations found.'));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+          child: Text(
+            'Search results',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppColors.navy,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+            itemCount: _suggestions.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final suggestion = _suggestions[index];
+              return Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: _loading ? null : () => _selectSuggestion(suggestion),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.line),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(
+                          backgroundColor: AppColors.accentSoft,
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            color: AppColors.amberInk,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                suggestion.name,
+                                style: const TextStyle(
+                                  color: AppColors.ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (suggestion.description.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  suggestion.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 12,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 15,
+                          color: AppColors.faint,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
-
-  Widget _stateMessage(String message) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: _searchController.retry,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    ),
-  );
 
   Widget _discovery() {
     final courses = context.watch<AppState>().classes;

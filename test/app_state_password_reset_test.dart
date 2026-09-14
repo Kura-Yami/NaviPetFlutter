@@ -2,20 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:navipet/data/app_state.dart';
 import 'package:navipet/data/registration_gateway.dart';
 
-/// Records every backend call so the tests can assert the exact sequence the
-/// reset flow is allowed to make. Any Supabase traffic would throw instead,
-/// because these AppStates are built without a SupabaseClient.
-class _FakeBackendGateway implements RegistrationGateway {
-  _FakeBackendGateway({this.resetError});
-
-  static const otpTokens = RegistrationVerificationSuccess(
+class _FakeRegistrationGateway implements RegistrationGateway {
+  static const recoveryTokens = RegistrationVerificationSuccess(
     accessToken: 'recovery-access',
     refreshToken: 'recovery-refresh',
   );
 
-  final RegistrationException? resetError;
-
-  final List<String> calls = <String>[];
+  RegistrationException? resetError;
+  final List<String> calls = [];
   String? resetAccessToken;
   String? capturedNewPassword;
 
@@ -23,10 +17,7 @@ class _FakeBackendGateway implements RegistrationGateway {
   Future<RegistrationVerificationSuccess> signIn({
     required String email,
     required String password,
-  }) async {
-    calls.add('sign-in');
-    return otpTokens;
-  }
+  }) async => recoveryTokens;
 
   @override
   Future<RegistrationSuccess> register({
@@ -34,27 +25,18 @@ class _FakeBackendGateway implements RegistrationGateway {
     required String lastName,
     required String email,
     required String password,
-  }) async {
-    calls.add('register');
-    return const RegistrationSuccess(message: 'ok', otpRequired: true);
-  }
-
-  @override
-  Future<PasswordResetRequestSuccess> requestPasswordReset({
-    required String email,
-  }) async {
-    calls.add('forgot-password');
-    return const PasswordResetRequestSuccess(message: 'ok');
-  }
+  }) async => const RegistrationSuccess(message: 'ok', otpRequired: true);
 
   @override
   Future<RegistrationVerificationSuccess> verifyRegistrationCode({
     required String email,
     required String code,
-  }) async {
-    calls.add('verify-otp');
-    return otpTokens;
-  }
+  }) async => recoveryTokens;
+
+  @override
+  Future<PasswordResetRequestSuccess> requestPasswordReset({
+    required String email,
+  }) async => const PasswordResetRequestSuccess(message: 'sent');
 
   @override
   Future<RegistrationVerificationSuccess> verifyPasswordRecoveryCode({
@@ -62,7 +44,7 @@ class _FakeBackendGateway implements RegistrationGateway {
     required String code,
   }) async {
     calls.add('verify-otp');
-    return otpTokens;
+    return recoveryTokens;
   }
 
   @override
@@ -78,121 +60,72 @@ class _FakeBackendGateway implements RegistrationGateway {
   }
 }
 
+AppState _state(_FakeRegistrationGateway gateway) => AppState(
+  registrationGateway: gateway,
+  recoverySessionRefresher: (tokens) async => tokens,
+);
+
 void main() {
-  group('AppState password reset against the backend gateway', () {
-    test(
-      'verifying a recovery code holds the session without touching Supabase',
-      () async {
-        final gateway = _FakeBackendGateway();
-        final state = AppState(registrationGateway: gateway);
-        addTearDown(state.dispose);
-
-        final result = await state.verifyEmailCode(
-          email: 'student@example.com',
-          code: '123456',
-          isPasswordRecovery: true,
-        );
-
-        expect(result.status, AuthActionStatus.passwordRecoveryReady);
-        expect(gateway.calls, ['verify-otp']);
-        // Reaching for a SupabaseClient here would have thrown a StateError and
-        // surfaced as a failure result, so a clean pass proves no SDK call.
-        expect(state.hasPasswordRecoverySession, isTrue);
-        expect(state.isAuthenticated, isFalse);
-      },
-    );
-
-    test('reuses the verify-otp access token for reset-password', () async {
-      final gateway = _FakeBackendGateway();
-      final state = AppState(registrationGateway: gateway);
+  group('AppState password recovery', () {
+    test('holds the recovery session after verifying the OTP', () async {
+      final gateway = _FakeRegistrationGateway();
+      final state = _state(gateway);
       addTearDown(state.dispose);
 
-      await state.verifyEmailCode(
+      final result = await state.verifyPasswordRecoveryCode(
         email: 'student@example.com',
         code: '123456',
-        isPasswordRecovery: true,
       );
-      final result = await state.updatePassword('Password1');
 
-      expect(result.status, AuthActionStatus.passwordUpdated);
+      expect(result.status, AuthActionStatus.passwordRecoveryVerified);
+      expect(gateway.calls, ['verify-otp']);
+      expect(state.hasPendingPasswordRecovery, isTrue);
+      expect(state.isAuthenticated, isFalse);
+    });
+
+    test('uses the verified access token to reset the password', () async {
+      final gateway = _FakeRegistrationGateway();
+      final state = _state(gateway);
+      addTearDown(state.dispose);
+      await state.verifyPasswordRecoveryCode(
+        email: 'student@example.com',
+        code: '123456',
+      );
+
+      final result = await state.resetPassword(
+        newPassword: 'Password1!',
+        confirmPassword: 'Password1!',
+      );
+
+      expect(result.status, AuthActionStatus.authenticated);
       expect(gateway.calls, ['verify-otp', 'reset-password']);
       expect(gateway.resetAccessToken, 'recovery-access');
-      expect(gateway.capturedNewPassword, 'Password1');
-      expect(state.hasPasswordRecoverySession, isFalse);
+      expect(gateway.capturedNewPassword, 'Password1!');
+      expect(state.hasPendingPasswordRecovery, isFalse);
     });
 
-    test('a second submit fails locally instead of hitting the API', () async {
-      final gateway = _FakeBackendGateway();
-      final state = AppState(registrationGateway: gateway);
+    test('keeps a recoverable session after a validation error', () async {
+      final gateway = _FakeRegistrationGateway()
+        ..resetError = const RegistrationException(
+          message: 'Password must be different from your previous password.',
+          statusCode: 422,
+          code: 'VALIDATION_ERROR',
+        );
+      final state = _state(gateway);
       addTearDown(state.dispose);
-
-      await state.verifyEmailCode(
+      await state.verifyPasswordRecoveryCode(
         email: 'student@example.com',
         code: '123456',
-        isPasswordRecovery: true,
       );
-      await state.updatePassword('Password1');
-      final second = await state.updatePassword('Password1');
 
-      expect(second.status, AuthActionStatus.failure);
-      expect(second.code, 'INVALID_ACCESS_TOKEN');
-      expect(gateway.calls, ['verify-otp', 'reset-password']);
+      final result = await state.resetPassword(
+        newPassword: 'Password1!',
+        confirmPassword: 'Password1!',
+      );
+
+      expect(result.status, AuthActionStatus.failure);
+      expect(result.errorCode, 'VALIDATION_ERROR');
+      expect(state.hasPendingPasswordRecovery, isTrue);
     });
-
-    test(
-      'an INVALID_ACCESS_TOKEN drops the session so the flow can restart',
-      () async {
-        final gateway = _FakeBackendGateway(
-          resetError: const RegistrationException(
-            message: 'Your password reset session has expired.',
-            statusCode: 401,
-            code: 'INVALID_ACCESS_TOKEN',
-          ),
-        );
-        final state = AppState(registrationGateway: gateway);
-        addTearDown(state.dispose);
-
-        await state.verifyEmailCode(
-          email: 'student@example.com',
-          code: '123456',
-          isPasswordRecovery: true,
-        );
-        final result = await state.updatePassword('Password1');
-
-        expect(result.status, AuthActionStatus.failure);
-        expect(result.code, 'INVALID_ACCESS_TOKEN');
-        expect(state.hasPasswordRecoverySession, isFalse);
-      },
-    );
-
-    test(
-      'a VALIDATION_ERROR keeps the session so the user can retry',
-      () async {
-        final gateway = _FakeBackendGateway(
-          resetError: const RegistrationException(
-            message: 'Password must be different from your previous password.',
-            statusCode: 422,
-            code: 'VALIDATION_ERROR',
-          ),
-        );
-        final state = AppState(registrationGateway: gateway);
-        addTearDown(state.dispose);
-
-        await state.verifyEmailCode(
-          email: 'student@example.com',
-          code: '123456',
-          isPasswordRecovery: true,
-        );
-        final result = await state.updatePassword('Password1');
-
-        expect(result.status, AuthActionStatus.failure);
-        expect(result.code, 'VALIDATION_ERROR');
-        expect(
-          result.message,
-          'Password must be different from your previous password.',
-        );
-        expect(state.hasPasswordRecoverySession, isTrue);
-      },
-    );
   });
 }

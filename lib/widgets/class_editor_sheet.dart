@@ -53,9 +53,8 @@ class _ClassEditorSheetState extends State<ClassEditorSheet> {
     super.dispose();
   }
 
-  String? _required(String? value) => value == null || value.trim().isEmpty
-      ? 'Required'
-      : null;
+  String? _required(String? value) =>
+      value == null || value.trim().isEmpty ? 'Required' : null;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -68,7 +67,8 @@ class _ClassEditorSheetState extends State<ClassEditorSheet> {
     setState(() => _saving = true);
     final service = MapboxNavigationService(accessToken: mapboxPublicToken);
     try {
-      var coordinate = widget.course?.coordinate ??
+      var coordinate =
+          widget.course?.coordinate ??
           const NavigationCoordinate(latitude: csulbLat, longitude: csulbLng);
       final suggestions = await service.suggestPlaces(
         '${_building.text}, CSULB',
@@ -78,7 +78,9 @@ class _ClassEditorSheetState extends State<ClassEditorSheet> {
         ),
       );
       if (suggestions.isNotEmpty) {
-        coordinate = (await service.retrievePlace(suggestions.first)).coordinate;
+        coordinate = (await service.retrievePlace(
+          suggestions.first,
+        )).coordinate;
       }
       if (!mounted) return;
       await context.read<AppState>().saveClass(
@@ -98,9 +100,9 @@ class _ClassEditorSheetState extends State<ClassEditorSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save class: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not save class: $error')));
       }
     } finally {
       service.dispose();
@@ -147,15 +149,24 @@ class _ClassEditorSheetState extends State<ClassEditorSheet> {
                 children: [
                   Expanded(child: _field(_code, 'Course code', 'CS 328')),
                   const SizedBox(width: 12),
-                  Expanded(child: _field(_room, 'Room', '518', required: false)),
+                  Expanded(
+                    child: _field(_room, 'Room', '518', required: false),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               _field(_name, 'Class name', 'Software Engineering'),
               const SizedBox(height: 12),
-              _field(_building, 'Building or address', 'Vivian Engineering Center'),
+              _field(
+                _building,
+                'Building or address',
+                'Vivian Engineering Center',
+              ),
               const SizedBox(height: 16),
-              const Text('Meeting days', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Meeting days',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 7,

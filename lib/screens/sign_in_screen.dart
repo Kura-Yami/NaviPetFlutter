@@ -44,9 +44,6 @@ class _SignInScreenState extends State<SignInScreen> {
       case AuthActionStatus.passwordResetCodeSent:
       case AuthActionStatus.passwordRecoveryVerified:
       case AuthActionStatus.codeResent:
-      case AuthActionStatus.passwordResetSent:
-      case AuthActionStatus.passwordRecoveryReady:
-      case AuthActionStatus.passwordUpdated:
         break;
       case AuthActionStatus.failure:
         _showMessage(result.message ?? 'Authentication failed.');

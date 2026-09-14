@@ -113,9 +113,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       case AuthActionStatus.passwordResetCodeSent:
       case AuthActionStatus.passwordRecoveryVerified:
       case AuthActionStatus.codeResent:
-      case AuthActionStatus.passwordResetSent:
-      case AuthActionStatus.passwordRecoveryReady:
-      case AuthActionStatus.passwordUpdated:
         break;
     }
   }

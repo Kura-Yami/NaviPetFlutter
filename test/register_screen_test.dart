@@ -113,16 +113,17 @@ Future<void> _fillValidForm(WidgetTester tester) async {
   await tester.pump();
 }
 
-Future<void> _acceptTerms(WidgetTester tester) async {
-  await tester.ensureVisible(find.byType(Checkbox));
-  await tester.tap(find.byType(Checkbox));
-  await tester.pump();
-}
-
 ElevatedButton _submitButton(WidgetTester tester) =>
     tester.widget<ElevatedButton>(
       find.widgetWithText(ElevatedButton, 'Create account'),
     );
+
+Future<void> _acceptTerms(WidgetTester tester) async {
+  await tester.ensureVisible(find.byType(Checkbox));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byType(Checkbox));
+  await tester.pump();
+}
 
 void main() {
   group('RegisterScreen validation', () {
@@ -223,7 +224,7 @@ void main() {
       await tester.enterText(find.byType(TextField).at(3), 'password1!');
       await tester.enterText(find.byType(TextField).at(4), 'password1!');
       await _acceptTerms(tester);
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(_submitButton(tester).onPressed, isNull);
       expect(
@@ -274,10 +275,9 @@ void main() {
         find.byType(TextField).at(2),
         'person@example.com',
       );
-      await tester.ensureVisible(
-        find.text('Already have a verification code?'),
-      );
-      await tester.tap(find.text('Already have a verification code?'));
+      final verificationLink = find.text('Already have a verification code?');
+      await tester.ensureVisible(verificationLink);
+      await tester.tap(verificationLink);
       await tester.pumpAndSettle();
 
       expect(find.text('Verify person@example.com'), findsOneWidget);
@@ -301,7 +301,6 @@ void main() {
 
       await _fillValidForm(tester);
       await _acceptTerms(tester);
-      await tester.pump();
       final submit = find.widgetWithText(ElevatedButton, 'Create account');
       await tester.ensureVisible(submit);
       await tester.tap(submit);

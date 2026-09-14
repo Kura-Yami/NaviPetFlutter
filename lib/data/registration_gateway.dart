@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// Successful `POST /auth/register` response from the NaviPet backend.
 class RegistrationSuccess {
   const RegistrationSuccess({required this.message, required this.otpRequired});
 
@@ -11,7 +10,6 @@ class RegistrationSuccess {
   final bool otpRequired;
 }
 
-/// Supabase session tokens returned after login or code verification.
 class RegistrationVerificationSuccess {
   const RegistrationVerificationSuccess({
     required this.accessToken,
@@ -28,7 +26,6 @@ class PasswordResetRequestSuccess {
   final String message;
 }
 
-/// Thrown when the backend rejects an authentication request.
 class RegistrationException implements Exception {
   const RegistrationException({
     required this.message,
@@ -82,7 +79,6 @@ abstract interface class RegistrationGateway {
   });
 }
 
-/// Real [RegistrationGateway] backed by `package:http`.
 class HttpRegistrationGateway implements RegistrationGateway {
   HttpRegistrationGateway({required String baseUrl, http.Client? client})
     : baseUrl = baseUrl.replaceFirst(RegExp(r'/+$'), ''),
@@ -97,12 +93,10 @@ class HttpRegistrationGateway implements RegistrationGateway {
   Future<RegistrationVerificationSuccess> signIn({
     required String email,
     required String password,
-  }) {
-    return _postForTokens(
-      path: '/auth/login',
-      body: {'email': email, 'password': password},
-    );
-  }
+  }) => _postForTokens(
+    path: '/auth/login',
+    body: {'email': email, 'password': password},
+  );
 
   @override
   Future<RegistrationSuccess> register({
@@ -120,9 +114,6 @@ class HttpRegistrationGateway implements RegistrationGateway {
         'password': password,
       },
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw _errorFrom(response);
-    }
     final body = _tryDecode(response.body);
     return RegistrationSuccess(
       message:
@@ -136,9 +127,7 @@ class HttpRegistrationGateway implements RegistrationGateway {
   Future<RegistrationVerificationSuccess> verifyRegistrationCode({
     required String email,
     required String code,
-  }) {
-    return _verifyCode(email: email, code: code, type: 'register');
-  }
+  }) => _verifyCode(email: email, code: code, type: 'register');
 
   @override
   Future<PasswordResetRequestSuccess> requestPasswordReset({
@@ -148,7 +137,6 @@ class HttpRegistrationGateway implements RegistrationGateway {
       path: '/auth/forgot-password',
       body: {'email': email},
     );
-    if (response.statusCode != 200) throw _errorFrom(response);
     final body = _tryDecode(response.body);
     return PasswordResetRequestSuccess(
       message:
@@ -161,9 +149,7 @@ class HttpRegistrationGateway implements RegistrationGateway {
   Future<RegistrationVerificationSuccess> verifyPasswordRecoveryCode({
     required String email,
     required String code,
-  }) {
-    return _verifyCode(email: email, code: code, type: 'recovery');
-  }
+  }) => _verifyCode(email: email, code: code, type: 'recovery');
 
   @override
   Future<void> resetPassword({
@@ -171,40 +157,36 @@ class HttpRegistrationGateway implements RegistrationGateway {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final response = await _post(
+    await _post(
       path: '/auth/reset-password',
       body: {'newPassword': newPassword, 'confirmPassword': confirmPassword},
       headers: {'Authorization': 'Bearer $accessToken'},
+      expectedStatus: 204,
     );
-    if (response.statusCode != 204) throw _errorFrom(response);
   }
 
   Future<RegistrationVerificationSuccess> _verifyCode({
     required String email,
     required String code,
     required String type,
-  }) {
-    return _postForTokens(
-      path: '/auth/verify-otp',
-      body: {'email': email, 'code': code, 'type': type},
-    );
-  }
+  }) => _postForTokens(
+    path: '/auth/verify-otp',
+    body: {'email': email, 'code': code, 'type': type},
+  );
 
   Future<RegistrationVerificationSuccess> _postForTokens({
     required String path,
     required Map<String, dynamic> body,
   }) async {
     final response = await _post(path: path, body: body);
-    if (response.statusCode != 200) throw _errorFrom(response);
-
-    final bodyJson = _tryDecode(response.body);
-    final accessToken = bodyJson?['access_token']?.toString() ?? '';
-    final refreshToken = bodyJson?['refresh_token']?.toString() ?? '';
+    final decoded = _tryDecode(response.body);
+    final accessToken = decoded?['access_token']?.toString() ?? '';
+    final refreshToken = decoded?['refresh_token']?.toString() ?? '';
     if (accessToken.isEmpty || refreshToken.isEmpty) {
       throw const RegistrationException(
-        message: 'The backend returned an invalid verification response.',
+        message: 'The authentication service returned an invalid session.',
         statusCode: 502,
-        code: 'INVALID_VERIFICATION_RESPONSE',
+        code: 'INVALID_SESSION',
       );
     }
     return RegistrationVerificationSuccess(
@@ -217,15 +199,18 @@ class HttpRegistrationGateway implements RegistrationGateway {
     required String path,
     required Map<String, dynamic> body,
     Map<String, String> headers = const {},
+    int expectedStatus = 200,
   }) async {
     try {
-      return await _client
+      final response = await _client
           .post(
             Uri.parse('$baseUrl$path'),
             headers: {'Content-Type': 'application/json', ...headers},
             body: jsonEncode(body),
           )
           .timeout(_timeout);
+      if (response.statusCode != expectedStatus) throw _errorFrom(response);
+      return response;
     } on TimeoutException {
       throw const RegistrationException(
         message: 'The server took too long to respond. Please try again.',
@@ -242,8 +227,7 @@ class HttpRegistrationGateway implements RegistrationGateway {
   }
 
   RegistrationException _errorFrom(http.Response response) {
-    final body = _tryDecode(response.body);
-    final error = body?['error'];
+    final error = _tryDecode(response.body)?['error'];
     if (error is Map) {
       return RegistrationException(
         message: error['message']?.toString() ?? 'Request failed.',
@@ -253,7 +237,7 @@ class HttpRegistrationGateway implements RegistrationGateway {
       );
     }
     return RegistrationException(
-      message: 'Request failed. Please try again.',
+      message: 'The NaviPet server could not complete the request.',
       statusCode: response.statusCode,
     );
   }

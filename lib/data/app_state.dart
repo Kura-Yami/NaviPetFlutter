@@ -41,7 +41,6 @@ class AppState extends ChangeNotifier {
 
     _applyUser(_supabase.auth.currentUser);
     _authSubscription = _supabase.auth.onAuthStateChange.listen((event) {
-      _isPasswordRecovery = event.event == AuthChangeEvent.passwordRecovery;
       _applyUser(event.session?.user);
     });
   }
@@ -62,7 +61,6 @@ class AppState extends ChangeNotifier {
 
   UserAccount? _activeUser;
   bool _busy = false;
-  bool _isPasswordRecovery = false;
   String? _errorMessage;
   List<CourseClass> _classes = const [];
   Set<String> _completionKeys = const {};
@@ -76,13 +74,7 @@ class AppState extends ChangeNotifier {
   bool get isAuthenticated =>
       !_passwordRecoveryInProgress && _supabase?.auth.currentSession != null;
   bool get isBusy => _busy;
-  bool get isPasswordRecovery => _isPasswordRecovery;
-
-  /// True while the backend recovery session from `/auth/verify-otp` is held.
-  ///
-  /// This session deliberately lives outside the Supabase SDK, so it is not
-  /// reflected by [isAuthenticated] and the router has to gate `/new-password`
-  /// on this flag instead.
+  bool get isPasswordRecovery => _passwordRecoveryInProgress;
   bool get hasPasswordRecoverySession => _pendingRecoverySession != null;
 
   String? get errorMessage => _errorMessage;
@@ -332,7 +324,7 @@ class AppState extends ChangeNotifier {
       }
       final shouldRefresh =
           _recoverySessionRefresher != null ||
-          (_verificationSessionHandler == null && _supabase != null);
+          _verificationSessionHandler == null;
       if (shouldRefresh) {
         _passwordRecoveryInProgress = true;
         notifyListeners();
@@ -347,85 +339,16 @@ class AppState extends ChangeNotifier {
           confirmPassword: confirmPassword,
         );
       } on RegistrationException catch (error) {
-        if (!_isMissingJwtSession(error)) {
-          if (error.code == 'INVALID_ACCESS_TOKEN' ||
-              error.code == 'INVALID_RECOVERY_SESSION') {
-            _pendingRecoverySession = null;
-          }
-          rethrow;
-        }
+        if (!_isMissingJwtSession(error)) rethrow;
         await _updateRecoveryPasswordDirectly(newPassword);
       }
 
-      if (!shouldRefresh &&
-          (_verificationSessionHandler != null || _supabase != null)) {
-        await _establishSession(tokens);
-      }
+      if (!shouldRefresh) await _establishSession(tokens);
       _pendingRecoverySession = null;
       _passwordRecoveryInProgress = false;
       notifyListeners();
       return const AuthActionResult.authenticated();
     });
-  }
-
-  /// Compatibility entry point used by the original recovery screens.
-  Future<AuthActionResult> sendPasswordReset(String email) async {
-    final result = await requestPasswordReset(email);
-    if (result.status == AuthActionStatus.passwordResetCodeSent) {
-      return const AuthActionResult.passwordResetSent();
-    }
-    return result;
-  }
-
-  /// Compatibility entry point that preserves the scoped recovery session.
-  Future<AuthActionResult> verifyEmailCode({
-    required String email,
-    required String code,
-    required bool isPasswordRecovery,
-  }) async {
-    final result = isPasswordRecovery
-        ? await verifyPasswordRecoveryCode(email: email, code: code)
-        : await verifyRegistrationCode(email: email, code: code);
-    if (result.status == AuthActionStatus.passwordRecoveryVerified) {
-      return const AuthActionResult.passwordRecoveryReady();
-    }
-    return result;
-  }
-
-  Future<AuthActionResult> resendVerificationCode({
-    required String email,
-    required bool isPasswordRecovery,
-  }) async {
-    if (isPasswordRecovery) return sendPasswordReset(email);
-    final result = await resendRegistrationCode(email);
-    if (result.status == AuthActionStatus.codeResent) {
-      return const AuthActionResult.emailVerificationRequired();
-    }
-    return result;
-  }
-
-  Future<AuthActionResult> updatePassword(String password) async {
-    final result = await resetPassword(
-      newPassword: password,
-      confirmPassword: password,
-    );
-    if (result.status == AuthActionStatus.authenticated) {
-      return const AuthActionResult.passwordUpdated();
-    }
-    if (result.errorCode == 'RECOVERY_SESSION_MISSING') {
-      return AuthActionResult.failure(
-        result.message ?? 'Your password reset session has expired.',
-        errorCode: 'INVALID_ACCESS_TOKEN',
-        statusCode: result.statusCode,
-      );
-    }
-    return result;
-  }
-
-  void discardPasswordRecovery() {
-    _pendingRecoverySession = null;
-    _passwordRecoveryInProgress = false;
-    notifyListeners();
   }
 
   Future<AuthActionResult> continueAsGuest() async {
@@ -446,7 +369,6 @@ class AppState extends ChangeNotifier {
     _setBusy(true);
     try {
       await _requireClient().auth.signOut();
-      _isPasswordRecovery = false;
       _activeUser = null;
       _pendingRecoverySession = null;
       _errorMessage = null;
@@ -454,7 +376,6 @@ class AppState extends ChangeNotifier {
       _errorMessage = error.message;
       rethrow;
     } finally {
-      _passwordRecoveryInProgress = false;
       _setBusy(false);
     }
   }
@@ -636,9 +557,6 @@ enum AuthActionStatus {
   passwordResetCodeSent,
   passwordRecoveryVerified,
   codeResent,
-  passwordResetSent,
-  passwordRecoveryReady,
-  passwordUpdated,
   failure,
 }
 
@@ -665,15 +583,6 @@ class AuthActionResult {
   const AuthActionResult.codeResent([String? message])
     : this._(AuthActionStatus.codeResent, message: message);
 
-  const AuthActionResult.passwordResetSent()
-    : this._(AuthActionStatus.passwordResetSent);
-
-  const AuthActionResult.passwordRecoveryReady()
-    : this._(AuthActionStatus.passwordRecoveryReady);
-
-  const AuthActionResult.passwordUpdated()
-    : this._(AuthActionStatus.passwordUpdated);
-
   const AuthActionResult.failure(
     String message, {
     String? errorCode,
@@ -689,6 +598,4 @@ class AuthActionResult {
   final String? message;
   final String? errorCode;
   final int? statusCode;
-
-  String? get code => errorCode;
 }
