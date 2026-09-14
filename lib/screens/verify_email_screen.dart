@@ -144,9 +144,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       case AuthActionStatus.emailVerificationRequired:
       case AuthActionStatus.passwordResetCodeSent:
       case AuthActionStatus.codeResent:
-      case AuthActionStatus.passwordResetSent:
-      case AuthActionStatus.passwordRecoveryReady:
-      case AuthActionStatus.passwordUpdated:
         break;
     }
   }
